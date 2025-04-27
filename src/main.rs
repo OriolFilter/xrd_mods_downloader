@@ -2,6 +2,7 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::path::Path;
 use std::process::exit;
+use futures::future::err;
 use reqwest;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value};
@@ -17,9 +18,10 @@ struct TAG_INFO {
     published_at: String
 }
 
+#[derive(Serialize, Deserialize, Debug)]
 struct APP {
     url: String,
-    id: String,
+    id: i32,
     tag_name: String,
     published_at: String
 }
@@ -42,7 +44,7 @@ impl CONFIG {
 
 fn main() {
     let destination_path: String="/tmp/xrd_mods".to_string();
-    let config = CONFIG{
+    let mut config = CONFIG{
         storage_path: destination_path,
         _db_file_name: "db.json".to_string(),
         apps: vec![]
@@ -50,7 +52,15 @@ fn main() {
     // load_db(&config);
     check_db_exists(config.db_path(),true);
 
-    load_apps(&config);
+    if let Err(e) = load_apps(&mut config) {
+        println!("Error loading apps from the DB");
+        exit(1);
+    }
+    println!("Apps load from the DB");
+
+    for app in config.apps{
+        println!("{:?}",app);
+    }
 
     // let xrd_folder: String="/home/goblin/.local/share/Steam/steamapps/common/GUILTY GEAR Xrd -REVELATOR-/".to_string();
 
@@ -63,14 +73,19 @@ fn main() {
 
 }
 
-fn load_apps(config: &CONFIG) -> std::io::Result<()> {
+fn load_apps(config: &mut CONFIG) -> std::io::Result<()> {
     let mut file = File::open(config.db_path())?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
-    // println!("{:?}", contents);
 
-    let value: Value = serde_json::from_str(&*contents)?;
-    println!("{:?}",value);
+    let mut app_list = vec![APP{
+        url: "".to_string(),
+        id: 0,
+        tag_name: "".to_string(),
+        published_at: "".to_string(),
+    }];
+
+    config.apps = serde_json::from_str(&contents).unwrap();
 
     Ok(())
 }
