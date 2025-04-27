@@ -18,11 +18,15 @@ struct TAG_INFO {
     published_at: String
 }
 
+
 #[derive(Serialize, Deserialize, Debug)]
 struct APP {
     url: String,
+    #[serde(default)]
     id: i32,
+    #[serde(default)]
     tag_name: String,
+    #[serde(default)]
     published_at: String
 }
 
@@ -57,7 +61,7 @@ fn main() {
         exit(1);
     }
     println!("Apps load from the DB");
-
+    
     for app in config.apps{
         println!("{:?}",app);
     }
