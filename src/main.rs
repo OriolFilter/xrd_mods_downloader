@@ -7,7 +7,7 @@ use reqwest;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 struct TAG_INFO {
     url: String,
     html_url: String,
@@ -28,6 +28,49 @@ struct APP {
     tag_name: String,
     #[serde(default)]
     published_at: String,
+}
+
+impl APP {
+    #[tokio::main]
+    async fn get_latest_release(&self) -> Result<TAG_INFO, reqwest::Error> {
+        // ➜  ~ curl -L \
+        // -H "Accept: application/vnd.github+json" \
+        // -H "X-GitHub-Api-Version: 2022-11-28" \
+        // https://api.github.com/repos/kkots/ggxrd_hitbox_overlay_2211/releases/latest
+
+        let repo_url_latest: String = format!("{}/releases/latest",self.url);
+
+        let mut headers = reqwest::header::HeaderMap::new();
+
+        headers.insert("Accept","application/vnd.github+json".parse().unwrap());
+        headers.insert("GitHub-Api-Version","2022-11-28".parse().unwrap());
+
+        // releases/latest
+        let client = reqwest::Client::builder().user_agent("Script-Check-Xrd-Tools").build();
+        let response = client.unwrap().get(&repo_url_latest).headers(headers).send().await?;
+        let response_status = response.status();
+        let mut tag_info: TAG_INFO = TAG_INFO {
+            url: "".to_string(),
+            html_url: "".to_string(),
+            id: 0,
+            tag_name: "".to_string(),
+            tarball_url: "".to_string(),
+            body: "".to_string(),
+            published_at: "".to_string(),
+        };
+
+        match response_status {
+            reqwest::StatusCode::OK => {
+                tag_info = response.json().await.unwrap();
+            }
+            other => {
+                println!("Unknown error. Status code {} when getting the latest tag for the repository {}",other, self.url);
+            }
+        }
+
+        Ok(tag_info)
+    }
+
 }
 
 // struct APP_VECTOR {
@@ -133,10 +176,10 @@ fn main() {
         exit(1);
     }
     println!("Apps load from the DB");
-    
-    for app in config.app_db.apps{
-        println!("{:?}",app);
-    }
+
+    // for app in &config.app_db.apps{
+    //     println!("{:?}",app);
+    // }
 
     // let xrd_folder: String="/home/goblin/.local/share/Steam/steamapps/common/GUILTY GEAR Xrd -REVELATOR-/".to_string();
 
@@ -145,11 +188,37 @@ fn main() {
     // https://github.com/Iquis/rev2-wakeup-tool/
 
     // download_function_tool()
-    download_hitbox_overlay(config.storage_path);
+    // download_hitbox_overlay();
+    check_app_updates(config);
 
 }
 
 
+
+fn check_app_updates(config: CONFIG){
+    for app in config.app_db.apps {
+        println!("Checking updates for app {}",app.url);
+        let result = app.get_latest_release();
+
+        if let Err(e) = result {
+            println!("Error: {}", e);
+            exit(1);
+        }
+        let latest_tag = result.unwrap();
+        // println!("{:#?}", latest_tag);
+
+        println!("\tCurrent tag:");
+        println!("\t  Name: '{}'",app.tag_name);
+        println!("\t  Published date: '{}'",app.published_at);
+
+        println!("\tLatest tag:");
+        println!("\t  Name: '{}'",latest_tag.tag_name);
+        println!("\t  Published date: '{}'",latest_tag.published_at);
+
+
+    }
+
+}
 
 fn load_apps(config: &mut CONFIG) -> std::io::Result<()> {
     let mut file = File::open(config.db_path())?;
@@ -173,66 +242,23 @@ fn load_apps(config: &mut CONFIG) -> std::io::Result<()> {
 //     return;
 // }
 
-#[tokio::main]
-async fn get_latest_release(repo_url: String) -> Result<String, reqwest::Error> {
-    // ➜  ~ curl -L \
-    // -H "Accept: application/vnd.github+json" \
-    // -H "X-GitHub-Api-Version: 2022-11-28" \
-    // https://api.github.com/repos/kkots/ggxrd_hitbox_overlay_2211/releases/latest
-
-    let repo_url_latest: String = format!("{repo_url}/releases/latest");
-
-    let mut headers = reqwest::header::HeaderMap::new();
-    headers.insert("Accept","application/vnd.github+json".parse().unwrap());
-    headers.insert("GitHub-Api-Version","2022-11-28".parse().unwrap());
-
-    // releases/latest
-    let client = reqwest::Client::builder().user_agent("Script-Check-Xrd-Tools").build();
-    let response = client.unwrap().get(&repo_url_latest).headers(headers).send().await?;
-    let response_status = response.status();
-    let mut response_json: TAG_INFO = TAG_INFO {
-        url: "".to_string(),
-        html_url: "".to_string(),
-        id: 0,
-        tag_name: "".to_string(),
-        tarball_url: "".to_string(),
-        body: "".to_string(),
-        published_at: "".to_string(),
-    };
-
-    match response_status {
-        reqwest::StatusCode::OK => {
-            println!("Success");
-            response_json = response.json().await.unwrap();
-        }
-        other => {
-            println!("Unknown error. Status code {other}");
-        }
-    }
-
-    println!("result = {:?}", response_status);
-    // println!("result = {:?}", reposnse_text);
-
-    Ok(response_json.url)
-}
-
 fn download_hitbox_overlay(_destination_path: String) {
     // let repo_url: String = "https://github.com/kkots/ggxrd_hitbox_overlay_2211".to_string();
     let repo_url: String = "https://api.github.com/repos/kkots/ggxrd_hitbox_overlay_2211".to_string();
 
     println!("download_hitbox_overlay()");
-    let result = get_latest_release(repo_url);
-    if let Err(e) = result {
-        println!("Error: {}", e);
-        exit(1);
-    }
-    println!("Latest release: {:?}", result.unwrap());
 }
 
 
-// fn download_function_tool() {
-//
-// }
+fn download_app(config: CONFIG, url: String,tag_info: TAG_INFO){
+    match url.as_str() {
+        "https://api.github.com/repos/kkots/ggxrd_hitbox_overlay_2211" => {
+             download_hitbox_overlay(config.storage_path);
+        }
+        other => {println!("No download option found that matches the URL  '{other}', cannot proceed with the download.")}
+    }
+
+}
 
 
 
