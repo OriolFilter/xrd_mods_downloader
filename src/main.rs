@@ -27,22 +27,94 @@ struct APP {
     #[serde(default)]
     tag_name: String,
     #[serde(default)]
-    published_at: String
+    published_at: String,
 }
 
 // struct APP_VECTOR {
 //     vec: Vec<APP>
 // }
 
+#[derive(Serialize, Deserialize, Debug)]
+struct APP_DB {
+    apps: Vec<APP>
+}
+
+impl APP_DB {
+    fn recreate_config(&mut self) {
+        let mut new_app_vector: Vec<APP> = vec![];
+        let default_repos_list = vec![
+            "https://api.github.com/repos/kkots/ggxrd_hitbox_overlay_2211".to_string(),
+        ];
+
+        for repository_url in default_repos_list {
+            new_app_vector.push(APP{
+                url: repository_url.to_string(),
+                id: 0,
+                tag_name: "".to_string(),
+                published_at: "".to_string(),
+            })
+        }
+        self.apps = new_app_vector;
+    }
+
+    fn create_new_db(&mut self, file_path: String) -> std::io::Result<()> {
+        println!("Creating db in '{}'", file_path);
+        let mut file = File::create(file_path)?;
+
+        &self.recreate_config();
+        let config_string = serde_json::to_string(&self.apps)?;
+
+        file.write_all(config_string.as_bytes())?;
+        Ok(())
+    }
+
+    fn save_db_config(&mut self, file_path: String) -> std::io::Result<()>  {
+        &self.recreate_config();
+        let config_string = serde_json::to_string(&self.apps)?;
+
+        let mut file = File::open(file_path)?;
+
+        &self.recreate_config();
+        let config_string = serde_json::to_string(&self.apps)?;
+
+        file.write_all(config_string.as_bytes())?;
+        Ok(())
+
+    }
+}
+
 struct CONFIG{
     storage_path: String,
     _db_file_name: String,
-    apps: Vec<APP>
+    app_db: APP_DB
 }
 
 impl CONFIG {
     fn db_path(&self) -> String {
         format!("{}/{}",self.storage_path,self._db_file_name)
+    }
+
+    fn check_db_exists(&mut self, create_db: bool) -> bool {
+        let mut is_present:bool=false;
+        is_present = Path::new(&self.db_path()).exists();
+
+        match (is_present,create_db) {
+            (true,false) | (true, true) => {
+                println!("DB found");
+            }
+            (false,true) => {
+                println!("DB not found");
+                if let Err(e) = self.app_db.create_new_db(self.db_path()) {
+                    println!("Error: {}", e);
+                    println!("Error creating file.\nExiting...");
+                    exit(1);
+                }
+                println!("New DB created");
+            }
+            _ => {}
+        }
+
+        is_present
     }
 }
 
@@ -51,10 +123,10 @@ fn main() {
     let mut config = CONFIG{
         storage_path: destination_path,
         _db_file_name: "db.json".to_string(),
-        apps: vec![]
+        app_db: APP_DB { apps: vec![] },
     };
     // load_db(&config);
-    check_db_exists(config.db_path(),true);
+    config.check_db_exists(true);
 
     if let Err(e) = load_apps(&mut config) {
         println!("Error loading apps from the DB");
@@ -62,7 +134,7 @@ fn main() {
     }
     println!("Apps load from the DB");
     
-    for app in config.apps{
+    for app in config.app_db.apps{
         println!("{:?}",app);
     }
 
@@ -77,6 +149,8 @@ fn main() {
 
 }
 
+
+
 fn load_apps(config: &mut CONFIG) -> std::io::Result<()> {
     let mut file = File::open(config.db_path())?;
     let mut contents = String::new();
@@ -89,7 +163,7 @@ fn load_apps(config: &mut CONFIG) -> std::io::Result<()> {
         published_at: "".to_string(),
     }];
 
-    config.apps = serde_json::from_str(&contents).unwrap();
+    config.app_db.apps = serde_json::from_str(&contents).unwrap();
 
     Ok(())
 }
@@ -160,35 +234,8 @@ fn download_hitbox_overlay(_destination_path: String) {
 //
 // }
 
-fn create_new_db(file_path: String) -> std::io::Result<()> {
-    println!("Creating db in '{}'", file_path);
-    let mut file = File::create(file_path)?;
-    file.write_all(b"[]")?;
-    Ok(())
-}
 
-fn check_db_exists(db_path: String, create_db: bool) -> bool {
-    let mut is_present:bool=false;
-    is_present = Path::new(&db_path).exists();
 
-    match (is_present,create_db) {
-        (true,false) | (true, true) => {
-            println!("DB found");
-        }
-        (false,true) => {
-            println!("DB not found");
-            if let Err(e) = create_new_db(db_path) {
-                println!("Error: {}", e);
-                println!("Error creating file.\nExiting...");
-                exit(1);
-            }
-            println!("New DB created");
-        }
-        _ => {}
-    }
-
-    return is_present;
-}
 
 fn check_versions_differ(repo_url: String, tag_id: i32, destination_path: String) {
     // if file doesn't exist, create file.
