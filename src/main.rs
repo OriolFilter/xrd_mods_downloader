@@ -204,17 +204,24 @@ fn check_app_updates(config: CONFIG){
             println!("Error: {}", e);
             exit(1);
         }
-        let latest_tag = result.unwrap();
+        let latest_tag: TAG_INFO = result.unwrap();
         // println!("{:#?}", latest_tag);
 
-        println!("\tCurrent tag:");
-        println!("\t  Name: '{}'",app.tag_name);
-        println!("\t  Published date: '{}'",app.published_at);
+        if app.tag_name == latest_tag.tag_name && app.published_at == latest_tag.published_at{
+            println!(" [✅] Latest tag already in use.");
+        } else {
+            println!(" [⚠️] Differences have been found!");
 
-        println!("\tLatest tag:");
-        println!("\t  Name: '{}'",latest_tag.tag_name);
-        println!("\t  Published date: '{}'",latest_tag.published_at);
+            println!("\tCurrent tag:");
+            println!("\t  Name: '{}'",app.tag_name);
+            println!("\t  Published date: '{}'",app.published_at);
 
+            println!("\tLatest tag:");
+            println!("\t  Name: '{}'",latest_tag.tag_name);
+            println!("\t  Published date: '{}'",latest_tag.published_at);
+
+            println!("Do you wish to update to the latest version? y/n/Y/N");
+        }
 
     }
 
