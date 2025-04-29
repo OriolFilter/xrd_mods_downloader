@@ -1,4 +1,5 @@
-use std::fs::File;
+use std::fmt::format;
+use std::fs::{File,create_dir};
 use std::io::{Read, Write};
 use std::path::Path;
 use std::process::exit;
@@ -7,6 +8,8 @@ use reqwest;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value};
 use inquire::Confirm;
+use downloader::{Download,downloader::Builder};
+use std::time::Duration;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct TAG_ASSETS {
@@ -33,6 +36,7 @@ struct TAG_INFO {
 
 #[derive(Serialize, Deserialize, Debug)]
 struct APP {
+    app_name: String,
     url: String,
     #[serde(default)]
     id: i32,
@@ -84,13 +88,30 @@ impl APP {
 
         Ok(tag_info)
     }
-    fn update_app(&self,destination_path: &String ,tag_info: TAG_INFO) {
+    fn update_app(&self, mod_folder: &String, tag_info: TAG_INFO) {
         // https://api.github.com/repos/kkots/ggxrd_hitbox_overlay_2211/releases/latest
         println!("Updating app {} to tag {}",self.url,tag_info.id);
 
-        match self.url.as_str() {
-            "https://api.github.com/repos/kkots/ggxrd_hitbox_overlay_2211" => {
-                download_hitbox_overlay(destination_path, tag_info);
+        // check app directory exists
+        // let mut is_present:bool=Path::new(mod_folder).exists();
+        let mut is_dir:bool=Path::new(mod_folder).is_dir();
+
+        match is_dir {
+            true => {}
+            false => {
+                if let Err(e) = create_dir(mod_folder) {
+                    println!("Error: {}", e);
+                    println!("Error creating file.\nExiting...");
+                    exit(1);
+                }
+                println!("Created directory for the mod {} located at '{}'",self.app_name,mod_folder)
+            }
+        }
+
+        // update app
+        match self.app_name.as_str() {
+            "ggxrd_hitbox_overlay" => {
+                download_hitbox_overlay(mod_folder, tag_info);
             }
             _ => {}
         }
@@ -116,6 +137,7 @@ impl APP_DB {
 
         for repository_url in default_repos_list {
             new_app_vector.push(APP{
+                app_name: "ggxrd_hitbox_overlay".to_string(),
                 url: repository_url.to_string(),
                 id: 0,
                 tag_name: "".to_string(),
@@ -251,7 +273,7 @@ fn check_app_updates(config: CONFIG){
 
             match ans {
                 Ok(true) => {
-                    app.update_app(&config.mods_folder_path,latest_tag);
+                    app.update_app(&format!("{}/{}",config.mods_folder_path,app.app_name),latest_tag);
                 },
                 Ok(false) => println!("That's too bad, I've heard great things about it."),
                 Err(_) => println!("Error with the input."),
@@ -265,13 +287,6 @@ fn load_apps(config: &mut CONFIG) -> std::io::Result<()> {
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
 
-    let mut app_list = vec![APP{
-        url: "".to_string(),
-        id: 0,
-        tag_name: "".to_string(),
-        published_at: "".to_string(),
-    }];
-
     config.app_db.apps = serde_json::from_str(&contents).unwrap();
 
     Ok(())
@@ -284,11 +299,36 @@ fn load_apps(config: &mut CONFIG) -> std::io::Result<()> {
 
 fn download_hitbox_overlay(destination_path: &String, tag_info: TAG_INFO) {
     println!("{:#?}",tag_info);
-    // Download tarball
+
+    let mut ggxrd_hitbox_overlay_zip: TAG_ASSETS;
+
+    // Identify assets
+    for asset in tag_info.assets {
+        match asset.name.as_str() {
+            "ggxrd_hitbox_overlay.zip" => {ggxrd_hitbox_overlay_zip=asset;}
+            _ => {}
+        }
+    }
+
+    // Download overlay.zip
+    let file_to_download = Download::new("https://github.com/kkots/ggxrd_hitbox_overlay_2211/releases/download/6.27/ggxrd_hitbox_overlay.zip");
 
 
+    // copy pasta
+    // https://github.com/hunger/downloader
+    let mut dl = Builder::default()
+        .connect_timeout(Duration::from_secs(4))
+        .download_folder(Path::new(destination_path))
+        .parallel_requests(8)
+        .build()
+        .unwrap();
 
+    let response = dl.download(&[file_to_download]).unwrap(); // other error handling
 
+    response.iter().for_each(|v| match v {
+        Ok(v) => println!("Downloaded: {:?}", v),
+        Err(e) => println!("Error: {:?}", e),
+    })
 }
 
 
