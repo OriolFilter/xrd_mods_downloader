@@ -90,7 +90,7 @@ impl APP {
 
         Ok(tag_info)
     }
-    fn update_app(&self, mod_folder: &String, tag_info: TAG_INFO) {
+    fn update_app(&mut self, mod_folder: &String, tag_info: TAG_INFO) {
         // https://api.github.com/repos/kkots/ggxrd_hitbox_overlay_2211/releases/latest
         println!("Updating app {} to tag {}",self.url,tag_info.id);
 
@@ -110,6 +110,13 @@ impl APP {
             }
         }
 
+
+
+
+        // Update old values
+        self.published_at = tag_info.published_at.to_string();
+        self.id = tag_info.id;
+
         // update app
         match self.app_name.as_str() {
             "ggxrd_hitbox_overlay" => {
@@ -117,7 +124,6 @@ impl APP {
             }
             _ => {}
         }
-
     }
 }
 
@@ -127,11 +133,12 @@ impl APP {
 
 #[derive(Serialize, Deserialize, Debug)]
 struct APP_DB {
-    apps: Vec<APP>
+    apps: Vec<APP>,
+    db_location: String
 }
 
 impl APP_DB {
-    fn recreate_config(&mut self) {
+    fn init_default_apps_config(&mut self) {
         let mut new_app_vector: Vec<APP> = vec![];
         let default_repos_list = vec![
             "https://api.github.com/repos/kkots/ggxrd_hitbox_overlay_2211".to_string(),
@@ -151,26 +158,32 @@ impl APP_DB {
 
     fn create_new_db(&mut self, file_path: String) -> std::io::Result<()> {
         println!("Creating db in '{}'", file_path);
-        let mut file = File::create(file_path)?;
+        // let mut file = File::create(file_path)?;
+        &self.init_default_apps_config();
+        println!("{:?}",self);
+        self.save_db_config()?;
+        // let config_string = serde_json::to_string(&self.apps)?;
 
-        &self.recreate_config();
-        let config_string = serde_json::to_string(&self.apps)?;
-
-        file.write_all(config_string.as_bytes())?;
+        // file.write_all(config_string.as_bytes())?;
         Ok(())
     }
 
-    fn save_db_config(&mut self, file_path: String) -> std::io::Result<()>  {
-        &self.recreate_config();
+    fn save_db_config(&mut self) -> std::io::Result<()>  {
+        // &self.recreate_config();
         // let config_string = serde_json::to_string(&self.apps)?;
 
-        let mut file = File::open(file_path)?;
+        let mut file = File::open(&self.db_location)?;
 
-        &self.recreate_config();
+        &self.init_default_apps_config();
         let config_string = serde_json::to_string(&self.apps)?;
 
         file.write_all(config_string.as_bytes())?;
         Ok(())
+
+    }
+
+    fn replace_old_tag(mut self, old_app:APP, tag_info: TAG_INFO){
+        // self = tag_info;
 
     }
 }
@@ -182,13 +195,13 @@ struct CONFIG{
 }
 
 impl CONFIG {
-    fn db_path(&self) -> String {
+    fn get_db_path(&self) -> String {
         format!("{}/{}", self.mods_folder_path, self._db_file_name)
     }
 
     fn check_db_exists(&mut self, create_db: bool) -> bool {
         let mut is_present:bool=false;
-        is_present = Path::new(&self.db_path()).exists();
+        is_present = Path::new(&self.get_db_path()).exists();
 
         match (is_present,create_db) {
             (true,false) | (true, true) => {
@@ -196,7 +209,7 @@ impl CONFIG {
             }
             (false,true) => {
                 println!("DB not found");
-                if let Err(e) = self.app_db.create_new_db(self.db_path()) {
+                if let Err(e) = self.app_db.create_new_db(self.get_db_path()) {
                     println!("Error: {}", e);
                     println!("Error creating file.\nExiting...");
                     exit(1);
@@ -208,6 +221,9 @@ impl CONFIG {
 
         is_present
     }
+    fn init(&mut self){
+        self.app_db.db_location=self.get_db_path()
+    }
 }
 
 fn main() {
@@ -215,8 +231,9 @@ fn main() {
     let mut config = CONFIG{
         mods_folder_path: mods_folder_path,
         _db_file_name: "db.json".to_string(),
-        app_db: APP_DB { apps: vec![] },
+        app_db: APP_DB { apps: vec![], db_location: "".to_string() },
     };
+    config.init();
     // load_db(&config);
     config.check_db_exists(true);
 
@@ -245,7 +262,7 @@ fn main() {
 
 
 fn check_app_updates(config: CONFIG){
-    for app in config.app_db.apps {
+    for mut app in config.app_db.apps {
         println!("Checking updates for app {}",app.url);
         let result = app.get_latest_release();
 
@@ -276,6 +293,7 @@ fn check_app_updates(config: CONFIG){
             match ans {
                 Ok(true) => {
                     app.update_app(&format!("{}/{}",config.mods_folder_path,app.app_name),latest_tag);
+                    // config.app_db.save_db_config()
                 },
                 Ok(false) => println!("That's too bad, I've heard great things about it."),
                 Err(_) => println!("Error with the input."),
@@ -285,7 +303,7 @@ fn check_app_updates(config: CONFIG){
 }
 
 fn load_apps(config: &mut CONFIG) -> std::io::Result<()> {
-    let mut file = File::open(config.db_path())?;
+    let mut file = File::open(config.get_db_path())?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
 
@@ -326,8 +344,6 @@ fn download_hitbox_overlay(destination_path: &String, tag_info: TAG_INFO) {
     // Check if file already exists
     let mut is_present:bool=Path::new(&format!("{}/{}",destination_path,ggxrd_hitbox_overlay_zip.name)).exists();
     let mut is_dir:bool=Path::new(&format!("{}/{}",destination_path,ggxrd_hitbox_overlay_zip.name)).is_dir();
-    println!("{}", is_present);
-    println!("{}", is_dir);
 
     match (is_present,is_dir) {
         (true,false) => {
