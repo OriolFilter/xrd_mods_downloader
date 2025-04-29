@@ -1,4 +1,5 @@
 use std::fmt::format;
+use std::{fs, io};
 use std::fs::{File,create_dir};
 use std::io::{Read, Write};
 use std::path::Path;
@@ -10,6 +11,7 @@ use serde_json::{Value};
 use inquire::Confirm;
 use downloader::{Download,downloader::Builder};
 use std::time::Duration;
+use zip::ZipArchive;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct TAG_ASSETS {
@@ -300,7 +302,15 @@ fn load_apps(config: &mut CONFIG) -> std::io::Result<()> {
 fn download_hitbox_overlay(destination_path: &String, tag_info: TAG_INFO) {
     println!("{:#?}",tag_info);
 
-    let mut ggxrd_hitbox_overlay_zip: TAG_ASSETS;
+    let mut ggxrd_hitbox_overlay_zip: TAG_ASSETS = TAG_ASSETS {
+        url: "".to_string(),
+        id: 0,
+        name: "".to_string(),
+        content_type: "".to_string(),
+        state: "".to_string(),
+        size: 0,
+        browser_download_url: "".to_string(),
+    };
 
     // Identify assets
     for asset in tag_info.assets {
@@ -311,24 +321,65 @@ fn download_hitbox_overlay(destination_path: &String, tag_info: TAG_INFO) {
     }
 
     // Download overlay.zip
-    let file_to_download = Download::new("https://github.com/kkots/ggxrd_hitbox_overlay_2211/releases/download/6.27/ggxrd_hitbox_overlay.zip");
+    let file_to_download = Download::new(&ggxrd_hitbox_overlay_zip.browser_download_url);
 
+    // Check if file already exists
+    // TODO
 
+    // // copy pasta
+    // // https://github.com/hunger/downloader
+    // let mut dl = Builder::default()
+    //     .connect_timeout(Duration::from_secs(4))
+    //     .download_folder(Path::new(destination_path))
+    //     .parallel_requests(8)
+    //     .build()
+    //     .unwrap();
+    //
+    // let response = dl.download(&[file_to_download]).unwrap(); // other error handling
+    //
+    // response.iter().for_each(|v| match v {
+    //     Ok(v) => println!("Downloaded: {:?}", v),
+    //     Err(e) => println!("Error: {:?}", e),
+    // });
+
+    install_hitbox_overlay(destination_path.to_string());
+}
+
+fn install_hitbox_overlay(download_path: String){
     // copy pasta
-    // https://github.com/hunger/downloader
-    let mut dl = Builder::default()
-        .connect_timeout(Duration::from_secs(4))
-        .download_folder(Path::new(destination_path))
-        .parallel_requests(8)
-        .build()
-        .unwrap();
+    // https://github.com/zip-rs/zip2/blob/master/examples/extract.rs
 
-    let response = dl.download(&[file_to_download]).unwrap(); // other error handling
+    let fname = format!("{}/{}",download_path,"ggxrd_hitbox_overlay.zip");
+    let zipfile = std::fs::File::open(fname).unwrap();
 
-    response.iter().for_each(|v| match v {
-        Ok(v) => println!("Downloaded: {:?}", v),
-        Err(e) => println!("Error: {:?}", e),
-    })
+    let mut archive = zip::ZipArchive::new(zipfile).unwrap();
+
+    for i in 0..archive.len() {
+        let mut file = archive.by_index(i).unwrap();
+        let outpath = format!("{}/{}",download_path,file.name());
+        println!("{:?}", outpath);
+
+        {
+            let comment = file.comment();
+            if !comment.is_empty() {
+                println!("File {i} comment: {comment}");
+            }
+        }
+
+        if file.is_dir() {
+            println!("File {} extracted to \"{}\"", i, outpath);
+            fs::create_dir_all(&outpath).unwrap();
+        } else {
+            println!(
+                "File {} extracted to \"{}\" ({} bytes)",
+                i,
+                outpath,
+                file.size()
+            );
+            let mut outfile = fs::File::create(&outpath).unwrap();
+            io::copy(&mut file, &mut outfile).unwrap();
+        }
+    }
 }
 
 
