@@ -6,7 +6,18 @@ use futures::future::err;
 use reqwest;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value};
+use inquire::Confirm;
 
+#[derive(Serialize, Deserialize, Debug)]
+struct TAG_ASSETS {
+    url: String,
+    id: i32,
+    name: String,
+    content_type: String,
+    state: String,
+    size: i32,
+    browser_download_url: String,
+}
 #[derive(Serialize, Deserialize, Debug)]
 struct TAG_INFO {
     url: String,
@@ -15,7 +26,8 @@ struct TAG_INFO {
     tag_name: String,
     tarball_url: String,
     body: String,
-    published_at: String
+    published_at: String,
+    assets: Vec<TAG_ASSETS>
 }
 
 
@@ -57,10 +69,12 @@ impl APP {
             tarball_url: "".to_string(),
             body: "".to_string(),
             published_at: "".to_string(),
+            assets: vec![],
         };
 
         match response_status {
             reqwest::StatusCode::OK => {
+                // println!("{:#?}",&response.json().await.unwrap());
                 tag_info = response.json().await.unwrap();
             }
             other => {
@@ -70,7 +84,18 @@ impl APP {
 
         Ok(tag_info)
     }
+    fn update_app(&self,destination_path: &String ,tag_info: TAG_INFO) {
+        // https://api.github.com/repos/kkots/ggxrd_hitbox_overlay_2211/releases/latest
+        println!("Updating app {} to tag {}",self.url,tag_info.id);
 
+        match self.url.as_str() {
+            "https://api.github.com/repos/kkots/ggxrd_hitbox_overlay_2211" => {
+                download_hitbox_overlay(destination_path, tag_info);
+            }
+            _ => {}
+        }
+
+    }
 }
 
 // struct APP_VECTOR {
@@ -113,7 +138,7 @@ impl APP_DB {
 
     fn save_db_config(&mut self, file_path: String) -> std::io::Result<()>  {
         &self.recreate_config();
-        let config_string = serde_json::to_string(&self.apps)?;
+        // let config_string = serde_json::to_string(&self.apps)?;
 
         let mut file = File::open(file_path)?;
 
@@ -127,14 +152,14 @@ impl APP_DB {
 }
 
 struct CONFIG{
-    storage_path: String,
+    mods_folder_path: String,
     _db_file_name: String,
     app_db: APP_DB
 }
 
 impl CONFIG {
     fn db_path(&self) -> String {
-        format!("{}/{}",self.storage_path,self._db_file_name)
+        format!("{}/{}", self.mods_folder_path, self._db_file_name)
     }
 
     fn check_db_exists(&mut self, create_db: bool) -> bool {
@@ -162,9 +187,9 @@ impl CONFIG {
 }
 
 fn main() {
-    let destination_path: String="/tmp/xrd_mods".to_string();
+    let mods_folder_path: String="/tmp/xrd_mods".to_string();
     let mut config = CONFIG{
-        storage_path: destination_path,
+        mods_folder_path: mods_folder_path,
         _db_file_name: "db.json".to_string(),
         app_db: APP_DB { apps: vec![] },
     };
@@ -219,12 +244,20 @@ fn check_app_updates(config: CONFIG){
             println!("\tLatest tag:");
             println!("\t  Name: '{}'",latest_tag.tag_name);
             println!("\t  Published date: '{}'",latest_tag.published_at);
+            let ans = Confirm::new("Do you wish to update to the latest version?")
+                .with_default(false)
+                .prompt();
+                // .with_help_message("This data is stored for good reasons")
 
-            println!("Do you wish to update to the latest version? y/n/Y/N");
+            match ans {
+                Ok(true) => {
+                    app.update_app(&config.mods_folder_path,latest_tag);
+                },
+                Ok(false) => println!("That's too bad, I've heard great things about it."),
+                Err(_) => println!("Error with the input."),
+            }
         }
-
     }
-
 }
 
 fn load_apps(config: &mut CONFIG) -> std::io::Result<()> {
@@ -249,23 +282,25 @@ fn load_apps(config: &mut CONFIG) -> std::io::Result<()> {
 //     return;
 // }
 
-fn download_hitbox_overlay(_destination_path: String) {
-    // let repo_url: String = "https://github.com/kkots/ggxrd_hitbox_overlay_2211".to_string();
-    let repo_url: String = "https://api.github.com/repos/kkots/ggxrd_hitbox_overlay_2211".to_string();
-
-    println!("download_hitbox_overlay()");
-}
+fn download_hitbox_overlay(destination_path: &String, tag_info: TAG_INFO) {
+    println!("{:#?}",tag_info);
+    // Download tarball
 
 
-fn download_app(config: CONFIG, url: String,tag_info: TAG_INFO){
-    match url.as_str() {
-        "https://api.github.com/repos/kkots/ggxrd_hitbox_overlay_2211" => {
-             download_hitbox_overlay(config.storage_path);
-        }
-        other => {println!("No download option found that matches the URL  '{other}', cannot proceed with the download.")}
-    }
+
 
 }
+
+
+// fn download_app(config: CONFIG, url: String,tag_info: TAG_INFO){
+//     match url.as_str() {
+//         "https://api.github.com/repos/kkots/ggxrd_hitbox_overlay_2211" => {
+//              download_hitbox_overlay(config.mods_folder_path);
+//         }
+//         other => {println!("No download option found that matches the URL  '{other}', cannot proceed with the download.")}
+//     }
+//
+// }
 
 
 
