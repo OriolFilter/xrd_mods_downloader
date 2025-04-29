@@ -324,23 +324,43 @@ fn download_hitbox_overlay(destination_path: &String, tag_info: TAG_INFO) {
     let file_to_download = Download::new(&ggxrd_hitbox_overlay_zip.browser_download_url);
 
     // Check if file already exists
-    // TODO
+    let mut is_present:bool=Path::new(&format!("{}/{}",destination_path,ggxrd_hitbox_overlay_zip.name)).exists();
+    let mut is_dir:bool=Path::new(&format!("{}/{}",destination_path,ggxrd_hitbox_overlay_zip.name)).is_dir();
+    println!("{}", is_present);
+    println!("{}", is_dir);
 
-    // // copy pasta
-    // // https://github.com/hunger/downloader
-    // let mut dl = Builder::default()
-    //     .connect_timeout(Duration::from_secs(4))
-    //     .download_folder(Path::new(destination_path))
-    //     .parallel_requests(8)
-    //     .build()
-    //     .unwrap();
-    //
-    // let response = dl.download(&[file_to_download]).unwrap(); // other error handling
-    //
-    // response.iter().for_each(|v| match v {
-    //     Ok(v) => println!("Downloaded: {:?}", v),
-    //     Err(e) => println!("Error: {:?}", e),
-    // });
+    match (is_present,is_dir) {
+        (true,false) => {
+            println!("A file with the name '{}' already exists, proceeding with the deletion.",&format!("{}/{}",destination_path,ggxrd_hitbox_overlay_zip.name));
+            fs::remove_file(&format!("{}/{}",destination_path,ggxrd_hitbox_overlay_zip.name));
+        }
+        (true,true) => {
+            // Error won't delete a folder
+            println!("The file '{}' cannot be downloaded due to a directory having the exact same name.",&format!("{}/{}",destination_path,ggxrd_hitbox_overlay_zip.name));
+            exit(1);
+        }
+        _ => {}
+
+    }
+
+
+    // let mut is_dir:bool=Path::new(mod_folder).is_dir();
+
+    // copy pasta
+    // https://github.com/hunger/downloader
+    let mut dl = Builder::default()
+        .connect_timeout(Duration::from_secs(4))
+        .download_folder(Path::new(destination_path))
+        .parallel_requests(8)
+        .build()
+        .unwrap();
+
+    let response = dl.download(&[file_to_download]).unwrap(); // other error handling
+
+    response.iter().for_each(|v| match v {
+        Ok(v) => println!("Downloaded: {:?}", v),
+        Err(e) => println!("Error: {:?}", e),
+    });
 
     install_hitbox_overlay(destination_path.to_string());
 }
