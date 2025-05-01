@@ -1,10 +1,11 @@
 use std::fmt::format;
 use std::{fs, io};
-use std::fs::{File,create_dir};
-use std::io::{Read, Write};
+use std::collections::HashMap;
+use std::fs::{File, create_dir};
+use std::io::{Read, Seek, Write};
 use std::path::Path;
 use std::process::exit;
-use futures::future::err;
+use futures::future::{err, SelectAll};
 use reqwest;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value};
@@ -12,10 +13,12 @@ use inquire::Confirm;
 use downloader::{Download,downloader::Builder};
 use std::time::Duration;
 use zip::ZipArchive;
+use std::env;
+use futures::Stream;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct TAG_ASSETS {
-    url: String,
+    // url: String,
     id: i32,
     name: String,
     content_type: String,
@@ -25,7 +28,7 @@ struct TAG_ASSETS {
 }
 #[derive(Serialize, Deserialize, Debug)]
 struct TAG_INFO {
-    url: String,
+    // url: String,
     html_url: String,
     id: i32,
     tag_name: String,
@@ -35,33 +38,55 @@ struct TAG_INFO {
     assets: Vec<TAG_ASSETS>
 }
 
+#[derive(Serialize, Deserialize, Debug, Default)]
+enum APP_TYPE {
+    #[default]
+    Unknown,
+    HitboxOverlay,
+    WakeupTool
+}
+
+impl APP_TYPE {
+    fn name(self) -> String {
+        match self {
+            APP_TYPE::HitboxOverlay => {"hitbox_overlay".to_string()}
+            APP_TYPE::WakeupTool => {"wakeup_tool".to_string()}
+            _ => {"".to_string()}
+        }
+    }
+}
 
 #[derive(Serialize, Deserialize, Debug)]
-struct APP_STRUCT {
-    app_name: String,
-    url: String,
+struct AppStruct {
+    repo_owner: String,
+    repo_name: String,
+    #[serde(default)]
+    url: String, // TODO not use
     #[serde(default)]
     id: i32,
     #[serde(default)]
     tag_name: String,
     #[serde(default)]
     published_at: String,
+    #[serde(default)]
+    app_type: APP_TYPE,
 }
 
-// struct APP_ENUM {
-//     hitbox_overlay: APP_STRUCT,
-//     wakeup_tool: APP_STRUCT,
-// }
+impl AppStruct {
+    fn get_app_name(&self) -> String {
+        format!("{}/{}",self.repo_owner,self.repo_name).to_string()
+    }
+}
 
-impl APP_STRUCT {
+impl AppStruct {
     #[tokio::main]
-    async fn get_latest_release(&self) -> Result<TAG_INFO, reqwest::Error> {
+    async fn get_latest_tag(&self) -> Result<TAG_INFO, reqwest::Error> {
         // ➜  ~ curl -L \
         // -H "Accept: application/vnd.github+json" \
         // -H "X-GitHub-Api-Version: 2022-11-28" \
         // https://api.github.com/repos/kkots/ggxrd_hitbox_overlay_2211/releases/latest
 
-        let repo_url_latest: String = format!("{}/releases/latest",self.url);
+        let repo_url_latest: String = format!("{}/releases/latest",self.get_api_repo_url());
 
         let mut headers = reqwest::header::HeaderMap::new();
 
@@ -73,7 +98,7 @@ impl APP_STRUCT {
         let response = client.unwrap().get(&repo_url_latest).headers(headers).send().await?;
         let response_status = response.status();
         let mut tag_info: TAG_INFO = TAG_INFO {
-            url: "".to_string(),
+            // url: "".to_string(),
             html_url: "".to_string(),
             id: 0,
             tag_name: "".to_string(),
@@ -111,7 +136,7 @@ impl APP_STRUCT {
                     println!("Error creating file.\nExiting...");
                     exit(1);
                 }
-                println!("Created directory for the mod {} located at '{}'",self.app_name,mod_folder)
+                println!("Created directory for the mod {} located at '{}'",self.repo_name,mod_folder)
             }
         }
 
@@ -123,12 +148,19 @@ impl APP_STRUCT {
         self.id = tag_info.id;
 
         // update app
-        match self.app_name.as_str() {
+        match self.repo_name.as_str() {
             "ggxrd_hitbox_overlay" => {
                 download_hitbox_overlay(mod_folder, tag_info);
             }
             _ => {}
         }
+    }
+
+    fn get_repo_url(&self) -> String{
+        format!("https://github.com/{}/{}",self.repo_owner,self.repo_name).to_string()
+    }
+    fn get_api_repo_url(&self) -> String{
+        format!("https://api.github.com/repos/{}/{}",self.repo_owner,self.repo_name).to_string()
     }
 }
 
@@ -138,71 +170,74 @@ impl APP_STRUCT {
 
 #[derive(Serialize, Deserialize, Debug)]
 struct APP_DB {
-    apps: Vec<APP_STRUCT>,
+    apps: Vec<AppStruct>,
     #[serde(default)]
     db_location: String
 }
 
 impl APP_DB {
     fn init_default_apps_config(&mut self) {
-        let mut new_app_vector: Vec<APP_STRUCT> = vec![];
+        let mut new_app_vector: Vec<AppStruct> = vec![];
         let default_repos_list = vec![
             "https://api.github.com/repos/kkots/ggxrd_hitbox_overlay_2211".to_string(),
         ];
 
         for repository_url in default_repos_list {
-            new_app_vector.push(APP_STRUCT {
-                app_name: "ggxrd_hitbox_overlay".to_string(),
+            new_app_vector.push(AppStruct {
+                repo_owner: "".to_string(),
+                repo_name: "".to_string(),
                 url: repository_url.to_string(),
                 id: 0,
                 tag_name: "".to_string(),
                 published_at: "".to_string(),
+                app_type: Default::default(),
             })
         }
         self.apps = new_app_vector;
     }
 
     fn create_new_db(&mut self, file_path: String) -> std::io::Result<()> {
-        println!("Creating db in '{}'", file_path);
-        // let file = File::create(file_path)?; //create empty file
-        // drop(file);
-        &self.init_default_apps_config();
-        println!("{:#?}",self);
-        self.save_db_config()?;
-        // let config_string = serde_json::to_string(&self.apps)?;
-
-        // file.write_all(config_string.as_bytes())?;
+        // println!("Creating db in '{}'", file_path);
+        // // let file = File::create(file_path)?; //create empty file
+        // // drop(file);
+        // &self.init_default_apps_config();
+        // println!("{:#?}",self);
+        // self.save_db_config()?;
+        // // let config_string = serde_json::to_string(&self.apps)?;
+        //
+        // // file.write_all(config_string.as_bytes())?;
         Ok(())
     }
 
     fn save_db_config(&mut self) -> std::io::Result<()>  {
-        // &self.recreate_config();
+        // // &self.recreate_config();
+        // // let config_string = serde_json::to_string(&self.apps)?;
+        //
+        // let mut file = File::create(&self.db_location)?;
+        //
+        // &self.init_default_apps_config();
         // let config_string = serde_json::to_string(&self.apps)?;
-
-        let mut file = File::create(&self.db_location)?;
-
-        &self.init_default_apps_config();
-        let config_string = serde_json::to_string(&self.apps)?;
-        println!("{:#?}",config_string);
-        println!("!!");
-        file.write_all(config_string.as_bytes())?;
+        // println!("{:#?}",config_string);
+        // println!("!!");
+        // file.write_all(config_string.as_bytes())?;
         Ok(())
 
     }
 
-    fn replace_old_tag(mut self, old_app: APP_STRUCT, tag_info: TAG_INFO){
+    fn replace_old_tag(mut self, old_app: AppStruct, tag_info: TAG_INFO){
         // self = tag_info;
 
     }
 }
 
-struct CONFIG{
+
+struct OLD_CONFIG {
     mods_folder_path: String,
     _db_file_name: String,
     app_db: APP_DB
 }
 
-impl CONFIG {
+impl OLD_CONFIG {
     fn get_db_path(&self) -> String {
         format!("{}/{}", self.mods_folder_path, self._db_file_name)
     }
@@ -234,45 +269,213 @@ impl CONFIG {
     }
 }
 
-fn main() {
-    let mods_folder_path: String="/tmp/xrd_mods".to_string();
-    let mut config = CONFIG{
-        mods_folder_path: mods_folder_path,
-        _db_file_name: "db.json".to_string(),
-        app_db: APP_DB { apps: vec![], db_location: "".to_string() },
-    };
-    config.init();
-    // load_db(&config);
-    config.check_db_exists(true);
 
-    if let Err(e) = load_apps(&mut config) {
-        println!("Error loading apps from the DB");
-        exit(1);
+#[derive(Serialize, Deserialize, Debug)]
+struct Config {
+    #[serde(default)]
+    apps: Vec<AppStruct>,
+    #[serde(default)]
+    db_location: String
+}
+
+impl Config {
+    fn set_default_apps (&mut self) {
+        let mut new_apps_vector: Vec<AppStruct> = vec![];
+
+        new_apps_vector.push(
+            AppStruct{
+                repo_owner: "kkots".to_string(),
+                repo_name: "ggxrd_hitbox_overlay_2211".to_string(),
+                url: "".to_string(),
+                id: 0,
+                tag_name: "".to_string(),
+                published_at: "".to_string(),
+                app_type: APP_TYPE::HitboxOverlay,
+            }
+        );
+
+        self.apps = new_apps_vector;
     }
-    println!("Apps load from the DB");
 
-    // for app in &config.app_db.apps{
-    //     println!("{:?}",app);
+    fn get_db_location (&mut self) -> String {
+        if &self.db_location == &"".to_string() {
+            match env::current_exe() {
+                Ok(exe_path) => {
+                    // println!("Path of this executable is: {}",exe_path.display());
+                    self.db_location = exe_path.parent().unwrap().to_str().unwrap().to_string();
+                }
+                Err(e) => {
+                    println!("failed to get current exe path: {e}");
+                    exit(1);
+                }
+            };
+
+        };
+
+        self.db_location.to_string()
+    }
+    fn get_apps_hashmap(&self) -> HashMap<String,&AppStruct>{
+        let mut apps_hashmap: HashMap<String,&AppStruct> = HashMap::new();
+
+        for app in &self.apps {
+            apps_hashmap.insert(app.get_app_name(),&app);
+        }
+
+        apps_hashmap
+    }
+}
+
+
+struct Manager {
+    config: Config
+}
+impl Manager {
+    fn load_config(&self){
+        // TODO
+
+    }
+    fn save_config(&self){
+        // TODO
+    }
+
+    fn get_latest_tags_hash_map(&self) -> HashMap<String, TAG_INFO> {
+
+        let mut tags_hashmap:HashMap<String, TAG_INFO> =HashMap::new();
+        for app in &self.config.apps {
+            let result = app.get_latest_tag();
+            match result {
+                Ok(new_tag) => {
+                    tags_hashmap.insert(app.get_app_name(), new_tag);
+                }
+                Err(e) => {
+                    println!("Error getting tag for app '{}': << {} >>", app.get_app_name(), e);
+                    exit(1);
+                }
+            }
+        }
+        tags_hashmap
+
+    }
+
+    fn check_for_updates(&mut self){
+        // Get ALL tags -> then compare -> prompt
+        // let apps_hashmap: HashMap<String, &AppStruct> = self.config.get_apps_hashmap();
+        let tags_hashmap: HashMap<String, TAG_INFO> = self.get_latest_tags_hash_map();
+
+        // println!("{:#?}",apps_hashmap);
+
+        for (app_name,tag_info) in tags_hashmap {
+            println!("App name: {}",app_name);
+            println!("Tag info: {:#?}",tag_info);
+        }
+
+        // for mut app in &mut self.config.apps {
+        //     app.tag_name="NEW".to_string();
+        // }
+        // let latest_tags_hashmap: HashMap<String, &TAG_INFO> = self.get_latest_tags_hash_map();
+
+        // for (app_name,TAG_INFO) in latest_tags_hashmap {
+        //
+        //     // // find the app that matches the tag
+        //     // let target_app: AppStruct;
+        //     // for app in self.config.apps {
+        //     //     match (app.repo_owner,app.repo_name) {
+        //     //          // => {}
+        //     //         (_, _) => {continue}
+        //     //     }
+        //     // }
+        // }
+
+            // if app.tag_name == latest_tag.tag_name && app.published_at == latest_tag.published_at{
+            //     println!(" [✅] Latest tag already in use.");
+            // } else {
+            //     println!(" [⚠️] Differences have been found!");
+            //
+            //     println!("\tCurrent tag:");
+            //     println!("\t  Name: '{}'",app.tag_name);
+            //     println!("\t  Published date: '{}'",app.published_at);
+            //
+            //     println!("\tLatest tag:");
+            //     println!("\t  Name: '{}'",latest_tag.tag_name);
+            //     println!("\t  Published date: '{}'",latest_tag.published_at);
+            //     let ans = Confirm::new("Do you wish to update to the latest version?")
+            //         .with_default(false)
+            //         .prompt();
+            //     // .with_help_message("This data is stored for good reasons")
+            //
+            //     match ans {
+            //         Ok(true) => {
+            //             app.update_app(&format!("{}/{}",config.mods_folder_path,app.app_name),latest_tag);
+            //             // config.app_db.save_db_config()
+            //         },
+            //         Ok(false) => println!("That's too bad, I've heard great things about it."),
+            //         Err(_) => println!("Error with the input."),
+            //     }
+            // }
+        // }
+    }
+}
+
+fn main() {
+
+    let mut manager = Manager {
+        config: Config{ apps: vec![], db_location: "/tmp/xrd_mods".to_string() }
+    };
+
+    manager.load_config();
+
+    manager.config.set_default_apps();
+
+    println!("{:#?}",manager.config);
+    println!("{:#?}",manager.config.get_db_location());
+
+    for app in &manager.config.apps {
+        println!("{:#?}",app);
+    }
+
+    manager.check_for_updates();
+
+    for app in &manager.config.apps {
+        println!("{:#?}",app);
+    }
+
+    // // let mut config = OLD_CONFIG {
+    // //     mods_folder_path: mods_folder_path,
+    // //     _db_file_name: "db.json".to_string(),
+    // //     app_db: APP_DB { apps: vec![], db_location: "".to_string() },
+    // // };
+    // config.init();
+    // // load_db(&config);
+    // config.check_db_exists(true);
+    //
+    // if let Err(e) = load_apps(&mut config) {
+    //     println!("Error loading apps from the DB");
+    //     exit(1);
     // }
-
-    // let xrd_folder: String="/home/goblin/.local/share/Steam/steamapps/common/GUILTY GEAR Xrd -REVELATOR-/".to_string();
-
-    // https://github.com/kkots/ggxrd_hitbox_overlay_2211
-
-    // https://github.com/Iquis/rev2-wakeup-tool/
-
-    // download_function_tool()
-    // download_hitbox_overlay();
-    check_app_updates(config);
+    // println!("Apps load from the DB");
+    //
+    // // for app in &config.app_db.apps{
+    // //     println!("{:?}",app);
+    // // }
+    //
+    // // let xrd_folder: String="/home/goblin/.local/share/Steam/steamapps/common/GUILTY GEAR Xrd -REVELATOR-/".to_string();
+    //
+    // // https://github.com/kkots/ggxrd_hitbox_overlay_2211
+    //
+    // // https://github.com/Iquis/rev2-wakeup-tool/
+    //
+    // // download_function_tool()
+    // // download_hitbox_overlay();
+    // check_app_updates(config);
 
 }
 
 
 
-fn check_app_updates(config: CONFIG){
+fn check_app_updates(config: OLD_CONFIG){
     for mut app in config.app_db.apps {
         println!("Checking updates for app {}",app.url);
-        let result = app.get_latest_release();
+        let result = app.get_latest_tag();
 
         if let Err(e) = result {
             println!("Error: {}", e);
@@ -300,7 +503,7 @@ fn check_app_updates(config: CONFIG){
 
             match ans {
                 Ok(true) => {
-                    app.update_app(&format!("{}/{}",config.mods_folder_path,app.app_name),latest_tag);
+                    app.update_app(&format!("{}/{}",config.mods_folder_path,app.get_app_name()),latest_tag);
                     // config.app_db.save_db_config()
                 },
                 Ok(false) => println!("That's too bad, I've heard great things about it."),
@@ -310,12 +513,12 @@ fn check_app_updates(config: CONFIG){
     }
 }
 
-fn load_apps(config: &mut CONFIG) -> std::io::Result<()> {
-    let mut file = File::open(config.get_db_path())?;
-    let mut contents = String::new();
-    file.read_to_string(&mut contents)?;
-
-    config.app_db.apps = serde_json::from_str(&contents).unwrap();
+fn load_apps(config: &mut OLD_CONFIG) -> std::io::Result<()> {
+    // let mut file = File::open(config.get_db_path())?;
+    // let mut contents = String::new();
+    // file.read_to_string(&mut contents)?;
+    //
+    // config.app_db.apps = serde_json::from_str(&contents).unwrap();
 
     Ok(())
 }
@@ -326,10 +529,10 @@ fn load_apps(config: &mut CONFIG) -> std::io::Result<()> {
 // }
 
 fn download_hitbox_overlay(destination_path: &String, tag_info: TAG_INFO) {
-    println!("{:#?}",tag_info);
+    // println!("{:#?}",tag_info);
 
     let mut ggxrd_hitbox_overlay_zip: TAG_ASSETS = TAG_ASSETS {
-        url: "".to_string(),
+        // url: "".to_string(),
         id: 0,
         name: "".to_string(),
         content_type: "".to_string(),
@@ -436,12 +639,3 @@ fn install_hitbox_overlay(download_path: String){
 //     }
 //
 // }
-
-
-
-
-fn check_versions_differ(repo_url: String, tag_id: i32, destination_path: String) {
-    // if file doesn't exist, create file.
-    // check_db_exists(destination_path)
-
-}
