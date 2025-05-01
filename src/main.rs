@@ -37,7 +37,7 @@ struct TAG_INFO {
 
 
 #[derive(Serialize, Deserialize, Debug)]
-struct APP {
+struct APP_STRUCT {
     app_name: String,
     url: String,
     #[serde(default)]
@@ -48,7 +48,12 @@ struct APP {
     published_at: String,
 }
 
-impl APP {
+// struct APP_ENUM {
+//     hitbox_overlay: APP_STRUCT,
+//     wakeup_tool: APP_STRUCT,
+// }
+
+impl APP_STRUCT {
     #[tokio::main]
     async fn get_latest_release(&self) -> Result<TAG_INFO, reqwest::Error> {
         // ➜  ~ curl -L \
@@ -133,19 +138,20 @@ impl APP {
 
 #[derive(Serialize, Deserialize, Debug)]
 struct APP_DB {
-    apps: Vec<APP>,
+    apps: Vec<APP_STRUCT>,
+    #[serde(default)]
     db_location: String
 }
 
 impl APP_DB {
     fn init_default_apps_config(&mut self) {
-        let mut new_app_vector: Vec<APP> = vec![];
+        let mut new_app_vector: Vec<APP_STRUCT> = vec![];
         let default_repos_list = vec![
             "https://api.github.com/repos/kkots/ggxrd_hitbox_overlay_2211".to_string(),
         ];
 
         for repository_url in default_repos_list {
-            new_app_vector.push(APP{
+            new_app_vector.push(APP_STRUCT {
                 app_name: "ggxrd_hitbox_overlay".to_string(),
                 url: repository_url.to_string(),
                 id: 0,
@@ -158,9 +164,10 @@ impl APP_DB {
 
     fn create_new_db(&mut self, file_path: String) -> std::io::Result<()> {
         println!("Creating db in '{}'", file_path);
-        // let mut file = File::create(file_path)?;
+        // let file = File::create(file_path)?; //create empty file
+        // drop(file);
         &self.init_default_apps_config();
-        println!("{:?}",self);
+        println!("{:#?}",self);
         self.save_db_config()?;
         // let config_string = serde_json::to_string(&self.apps)?;
 
@@ -172,17 +179,18 @@ impl APP_DB {
         // &self.recreate_config();
         // let config_string = serde_json::to_string(&self.apps)?;
 
-        let mut file = File::open(&self.db_location)?;
+        let mut file = File::create(&self.db_location)?;
 
         &self.init_default_apps_config();
         let config_string = serde_json::to_string(&self.apps)?;
-
+        println!("{:#?}",config_string);
+        println!("!!");
         file.write_all(config_string.as_bytes())?;
         Ok(())
 
     }
 
-    fn replace_old_tag(mut self, old_app:APP, tag_info: TAG_INFO){
+    fn replace_old_tag(mut self, old_app: APP_STRUCT, tag_info: TAG_INFO){
         // self = tag_info;
 
     }
