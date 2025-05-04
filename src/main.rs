@@ -68,7 +68,9 @@ struct AppStruct {
     #[serde(default)]
     published_at: String,
     #[serde(default)]
-    url_source_version: String
+    url_source_version: String,
+    #[serde(default)]
+    automatically_patch: bool
 }
 
 impl AppStruct {
@@ -141,6 +143,17 @@ impl AppStruct {
             if matched_asset.name.ends_with(".zip") {
                 unzip_file(format!("{}/{}",destination_dir.to_string(),matched_asset.name),destination_dir.to_string());
             }
+        }
+    }
+
+    fn patch_app(&self,xrd_game_folder: &String,downloads_mod_path: &String, tag_info: &TAG_INFO){
+        let mut files_to_move_whitelist:Vec<String> = vec![];
+
+        match self.app_type {
+            APP_TYPE::HitboxOverlay => {
+                files_to_move_whitelist = vec!["".to_string()];
+            }
+            APP_TYPE::Unknown | _ => {}
         }
     }
 
@@ -299,7 +312,9 @@ impl AppStruct {
 #[derive(Serialize, Deserialize, Debug)]
 struct Config {
     #[serde(default)]
-    apps: HashMap<String,AppStruct>
+    apps: HashMap<String,AppStruct>,
+    #[serde(default)]
+    xrd_game_folder: String
 }
 
 impl Config {
@@ -317,6 +332,7 @@ impl Config {
                 published_at: "".to_string(),
                 app_type: APP_TYPE::HitboxOverlay,
                 url_source_version: "".to_string(),
+                automatically_patch: false,
             }
         );
 
@@ -330,6 +346,7 @@ impl Config {
                 published_at: "".to_string(),
                 app_type: APP_TYPE::WakeupTool,
                 url_source_version: "".to_string(),
+                automatically_patch: false,
             }
         );
 
@@ -343,6 +360,7 @@ impl Config {
                 published_at: "".to_string(),
                 app_type: APP_TYPE::WakeupTool,
                 url_source_version: "".to_string(),
+                automatically_patch: false,
             }
         );
 
@@ -356,6 +374,7 @@ impl Config {
                 published_at: "".to_string(),
                 app_type: APP_TYPE::FasterLoadingTimes,
                 url_source_version: "".to_string(),
+                automatically_patch: false,
             }
         );
 
@@ -369,6 +388,7 @@ impl Config {
                 published_at: "".to_string(),
                 app_type: APP_TYPE::MirrorColorSelect,
                 url_source_version: "".to_string(),
+                automatically_patch: false,
             }
         );
 
@@ -383,6 +403,7 @@ impl Config {
                 published_at: "".to_string(),
                 app_type: APP_TYPE::MirrorColorSelect,
                 url_source_version: "".to_string(),
+                automatically_patch: false,
             }
         );
 
@@ -418,24 +439,15 @@ impl Config {
     fn get_db_file_path(&mut self) -> String {
         format!("{}/{}", self.get_db_dir_path(), "db.json")
     }
-    // fn get_apps_hashmap(&self) -> HashMap<String,&AppStruct>{
-    //     let mut apps_hashmap: HashMap<String,&AppStruct> = HashMap::new();
-    //
-    //     for app in &self.apps {
-    //         apps_hashmap.insert(app.get_app_name(),app);
-    //     }
-    //
-    //     apps_hashmap
-    // }
-    // fn get_app_from_appname(&self, app_name: String) -> Result<&AppStruct, bool> {
-    //     for app in &self.apps{
-    //         if app.get_app_name() == app_name {
-    //             return Ok(app);
-    //         }
-    //         else { continue }
-    //     }
-    //     Err(true)
-    // }
+
+    fn get_xrd_game_folder(&mut self) -> String{
+        match self.xrd_game_folder.is_empty() {
+            false => {self.xrd_game_folder.to_string()},
+            true => {
+                "/tmp/xrd_game".to_string()
+            }
+        }
+    }
 }
 
 fn print_different_versions(current:&AppStruct,latest:&TAG_INFO) -> bool {
@@ -521,6 +533,28 @@ impl Manager {
 
     }
 
+    fn patch_app(&mut self, app_name: &String, latest_tag_info: &TAG_INFO) {
+        let modpath_dir = &format!("{}/{}", self.config.get_db_dir_path(), app_name);
+
+        match self.config.apps.get(app_name) {
+            Some(current_app) => {
+                println!("[🚧️] Patching '{}'",current_app.get_app_name());
+                match current_app.app_type {
+                    APP_TYPE::HitboxOverlay | APP_TYPE::FasterLoadingTimes | APP_TYPE::WakeupTool | APP_TYPE::MirrorColorSelect | APP_TYPE::BackgroundGamepad => {
+                        current_app.patch_app(&self.config.get_xrd_game_folder(), modpath_dir, latest_tag_info);
+                    }
+                    _ => {println!("[🚫] App '{}' of type {:?} doesn't have a patch procedure. Skipping", current_app.get_app_name(),current_app.app_type)}
+                }
+            }
+            None => {
+                println!("App '{}' not found. Skipping for tag with url '{}'", app_name, latest_tag_info.html_url);
+            }
+        }
+
+
+
+
+    }
     fn update_app(&mut self, app_name: &String, latest_tag_info: &TAG_INFO) {
         // Create mod folder if required.
         let modpath_dir = &format!("{}/{}", self.config.get_db_dir_path(), app_name);
@@ -540,7 +574,7 @@ impl Manager {
         }
 
 
-        // Respective update
+        // App update (download new files)
         match self.config.apps.get(app_name) {
             Some(current_app) => {
                 if current_app.tag_name == latest_tag_info.tag_name.to_string() {
@@ -603,9 +637,11 @@ impl Manager {
 
             match ans {
                 Ok(true) => {
+                    // Download
                     for (app_name,latest_tag_info) in &tags_hashmap {
                         self.update_app(app_name, latest_tag_info);
                     }
+
                     match self.save_config(){
                         Ok(_) => {
                             println!("Successfully saved the configuration.")
@@ -614,17 +650,26 @@ impl Manager {
                             println!("Error Saving the configuration: '{}'",e)
                         }
                     }
+
+                    // Automatically patch apps (for those enabled)
+                    for (app_name,latest_tag_info) in &tags_hashmap {
+                        self.patch_app(app_name, latest_tag_info);
+                    }
+
                 },
                 Ok(false) => println!("That's too bad, I've heard great things about it."),
                 Err(_) => println!("Error with the input."),
             }
+
+
+
         }
     }
 }
 
 fn main() {
     let mut manager = Manager {
-        config: Config{ apps: HashMap::new() }
+        config: Config{ apps: HashMap::new(), xrd_game_folder: "".to_string() }
     };
 
 
