@@ -398,7 +398,7 @@ impl Manager {
 
     }
 
-    fn update_app(mut self, current:&AppStruct, latest:&TAG_INFO) {
+    fn update_app(&mut self, current:&AppStruct, latest:&TAG_INFO) {
         let updated: bool = false;
         // if current.tag_name == latest.tag_name {
         //     println!("[✅] APP {} is up to date, skipping...",current.get_app_name());
@@ -418,13 +418,13 @@ impl Manager {
         let tags_hashmap: HashMap<String, TAG_INFO> = self.get_latest_tags_hash_map();
         // let apps_hashmap: HashMap<String, &AppStruct> = self.config.get_apps_hashmap();
 
-        for (app_name,tag_info) in &tags_hashmap {
-            match self.config.apps.get(app_name) {
-                Some(appstruct)  => {
-                    print_different_versions(appstruct,tag_info);
+        for (app_name,latest_tag_info) in &tags_hashmap {
+            match self.config.apps.get_mut(app_name) {
+                Some(current_app)  => {
+                    print_different_versions(current_app,latest_tag_info);
                 }
                 None => {
-                    println!("App '{}' not found. Skipping for tag with url '{}'",app_name,tag_info.html_url);
+                    println!("App '{}' not found. Skipping for tag with url '{}'",app_name,latest_tag_info.html_url);
                 }
             }
         }
@@ -436,15 +436,17 @@ impl Manager {
         // println!("## {:#?}",tags_hashmap);
 
         // println!("Updating all the apps:");
-        // for (app_name,tag_info) in &tags_hashmap {
-        //     match self.config.apps.get(app_name) {
-        //         Some(appstruct)  => {
-        //             print_different_versions(appstruct,tag_info);
-        //         }
-        //         None => {
-        //             println!("App '{}' not found. Skipping for tag with url '{}'",app_name,tag_info.html_url);
-        //         }
-        //     }
+        for (app_name,latest_tag_info) in &tags_hashmap {
+            match self.config.apps.get_mut(app_name) {
+                Some(current_app) => {
+                    println!("{}", self.config.db_location);
+                    self.update_app(current_app,latest_tag_info);
+                }
+                None => {
+                    println!("App '{}' not found. Skipping for tag with url '{}'", app_name, latest_tag_info.html_url);
+                }
+            }
+        }
         //     // println!("> {:#?}",app_name);
         //     // println!(">> {:#?}",tag_info);
         //     // let target_app = s elf.config.get_app_from_appname(app_name.to_string());
