@@ -89,7 +89,7 @@ impl AppStruct {
             APP_TYPE::WakeupTool => {
                 assets_whitelist = vec![
                     format!("GGXrdReversalTool.{}.zip",tag_info.tag_name), // Iquis
-                    format!("GGXrdReversalTool-{}.zip",tag_info.tag_name) // Kkots
+                    format!("GGXrdReversalTool-{}.zip",tag_info.tag_name) // kkots
                 ];
             }
             APP_TYPE::HitboxOverlay => {
@@ -280,9 +280,7 @@ impl AppStruct {
 #[derive(Serialize, Deserialize, Debug)]
 struct Config {
     #[serde(default)]
-    apps: HashMap<String,AppStruct>,
-    #[serde(default)]
-    db_location: String
+    apps: HashMap<String,AppStruct>
 }
 
 impl Config {
@@ -303,10 +301,23 @@ impl Config {
             }
         );
 
-        // Wake up tool
+        // Wake up tool Iquis
         holder_apps_vector.push(
             AppStruct{
                 repo_owner: "Iquis".to_string(),
+                repo_name: "rev2-wakeup-tool".to_string(),
+                id: 0,
+                tag_name: "".to_string(),
+                published_at: "".to_string(),
+                app_type: APP_TYPE::WakeupTool,
+                url_source_version: "".to_string(),
+            }
+        );
+
+        // Wake up tool kkots
+        holder_apps_vector.push(
+            AppStruct{
+                repo_owner: "kkots".to_string(),
                 repo_name: "rev2-wakeup-tool".to_string(),
                 id: 0,
                 tag_name: "".to_string(),
@@ -324,24 +335,29 @@ impl Config {
     }
 
     fn get_db_dir_path(&mut self) -> String {
-        if &self.db_location == &"".to_string() {
-            match env::current_exe() {
-                Ok(exe_path) => {
-                    // println!("Path of this executable is: {}",exe_path.display());
-                    self.db_location = exe_path.parent().unwrap().to_str().unwrap().to_string();
+        match env::var("XRD_MOD_FOLDER") {
+            Ok(env_val) => {
+                println!("XRD_MOD_FOLDER env is set to: {}. Overwriting executable location.",env_val);
+                env_val
+            }
+            _ => {
+                match env::current_exe() {
+                    Ok(exe_path) => {
+                        // println!("Path of this executable is: {}",exe_path.display());
+                        exe_path.parent().unwrap().to_str().unwrap().to_string()
+                    }
+                    Err(e) => {
+                        println!("failed to get current exe path: {e}");
+                        exit(1);
+                    }
                 }
-                Err(e) => {
-                    println!("failed to get current exe path: {e}");
-                    exit(1);
-                }
-            };
+            }
+        }
 
-        };
 
-        self.db_location.to_string()
     }
     fn get_db_path(&mut self) -> String {
-        format!("{}/{}",self.db_location,"db.json")
+        format!("{}/{}", self.get_db_dir_path(), "db.json")
     }
     // fn get_apps_hashmap(&self) -> HashMap<String,&AppStruct>{
     //     let mut apps_hashmap: HashMap<String,&AppStruct> = HashMap::new();
@@ -518,9 +534,8 @@ impl Manager {
 }
 
 fn main() {
-
     let mut manager = Manager {
-        config: Config{ apps: HashMap::new(), db_location: "/tmp/xrd_mods".to_string() }
+        config: Config{ apps: HashMap::new() }
     };
 
     manager.load_config();
@@ -530,16 +545,16 @@ fn main() {
     // println!("{:#?}",manager.config);
     // println!("{:#?}",manager.config.get_db_location());
 
-    for app in &manager.config.apps {
-        println!("{:?}",app);
-    }
+    // for app in &manager.config.apps {
+    //     println!("{:?}",app);
+    // }
 
     manager.update_all();
 
-    println!("EOF apps print"); // TODO REMOVE VISUAL PRINT
-    for app in &manager.config.apps {
-        println!("{:?}",app);
-    }
+    // println!("EOF apps print"); // TODO REMOVE VISUAL PRINT
+    // for app in &manager.config.apps {
+    //     println!("{:?}",app);
+    // }
 }
 
 
