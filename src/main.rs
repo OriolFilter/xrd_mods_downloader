@@ -418,10 +418,26 @@ impl Manager {
         let tags_hashmap: HashMap<String, TAG_INFO> = self.get_latest_tags_hash_map();
         // let apps_hashmap: HashMap<String, &AppStruct> = self.config.get_apps_hashmap();
 
-        // println!("{:#?}",apps_hashmap);
-        //
+        for (app_name,tag_info) in &tags_hashmap {
+            match self.config.apps.get(app_name) {
+                Some(appstruct)  => {
+                    print_different_versions(appstruct,tag_info);
+                }
+                None => {
+                    println!("App '{}' not found. Skipping for tag with url '{}'",app_name,tag_info.html_url);
+                }
+            }
+        }
+
+        // let target_app = self.config.get_app_from_appname(self.config.apps[0].get_app_name());
+        // println!("{:#?}", target_app);
+
+        // println!("## {:#?}",self.config.apps);
+        // println!("## {:#?}",tags_hashmap);
+
+        // println!("Updating all the apps:");
         // for (app_name,tag_info) in &tags_hashmap {
-        //     match apps_hashmap.get(app_name) {
+        //     match self.config.apps.get(app_name) {
         //         Some(appstruct)  => {
         //             print_different_versions(appstruct,tag_info);
         //         }
@@ -429,36 +445,26 @@ impl Manager {
         //             println!("App '{}' not found. Skipping for tag with url '{}'",app_name,tag_info.html_url);
         //         }
         //     }
+        //     // println!("> {:#?}",app_name);
+        //     // println!(">> {:#?}",tag_info);
+        //     // let target_app = s elf.config.get_app_from_appname(app_name.to_string());
+        //     // for app in &self.config.apps{
+        //     //     if app.get_app_name() == app_name.to_string() {
+        //     //         self.update_app(app,tag_info);
+        //     //     }
+        //     //     else { continue }
+        //     // }
+        //
+        //     // match target_app {
+        //     //     Ok(appstruct)  => {
+        //     //         println!("{:#?}", appstruct);
+        //     //         self.update_app(appstruct,tag_info);
+        //     //     }
+        //     //     Err(false)|Err(true) => {
+        //     //         println!("App '{}' not found. Skipping for tag with url '{}'",app_name,tag_info.html_url);
+        //     //     }
+        //     // }
         // }
-
-        // let target_app = self.config.get_app_from_appname(self.config.apps[0].get_app_name());
-        // println!("{:#?}", target_app);
-
-        println!("## {:#?}",self.config.apps);
-        println!("## {:#?}",tags_hashmap);
-
-        println!("Updating all the apps:");
-        for (app_name,tag_info) in &tags_hashmap {
-            println!("> {:#?}",app_name);
-            println!(">> {:#?}",tag_info);
-            // let target_app = s elf.config.get_app_from_appname(app_name.to_string());
-            // for app in &self.config.apps{
-            //     if app.get_app_name() == app_name.to_string() {
-            //         self.update_app(app,tag_info);
-            //     }
-            //     else { continue }
-            // }
-
-            // match target_app {
-            //     Ok(appstruct)  => {
-            //         println!("{:#?}", appstruct);
-            //         self.update_app(appstruct,tag_info);
-            //     }
-            //     Err(false)|Err(true) => {
-            //         println!("App '{}' not found. Skipping for tag with url '{}'",app_name,tag_info.html_url);
-            //     }
-            // }
-        }
 
 
         // for mut app in &mut self.config.apps {
