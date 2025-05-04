@@ -349,9 +349,9 @@ fn print_different_versions(current:&AppStruct,latest:&TAG_INFO) {
     println!("Checking updates for app: {}",current.get_app_name());
 
     if current.tag_name == latest.tag_name {
-        println!("[✅] APP {} is up to date!",current.get_app_name());
+        println!("[✅ ] APP {} is up to date!",current.get_app_name());
     } else {
-        println!("[⚠️] APP {} has a new version detected.",current.get_app_name());
+        println!("[⚠️ ] APP {} has a new version detected.",current.get_app_name());
 
         // Version
         println!("Version:\t'{}' -> '{}'",current.tag_name,latest.tag_name);
@@ -420,9 +420,9 @@ impl Manager {
         match self.config.apps.get(app_name) {
             Some(current_app) => {
                 if current_app.tag_name == latest_tag_info.tag_name.to_string() {
-                    println!("[✅] APP {} is up to date, skipping...",current_app.get_app_name());
+                    println!("[✅ ] APP {} is up to date, skipping...",current_app.get_app_name());
                 } else {
-                    println!("[⚠️] Updating '{}'",current_app.get_app_name());
+                    println!("[⚠️ ] Updating '{}'",current_app.get_app_name());
                     match current_app.app_type {
                         APP_TYPE::Unknown | APP_TYPE::WakeupTool => {println!("App '{}' doesn't have a update procedure. Skipping", current_app.get_app_name())}
                         APP_TYPE::HitboxOverlay => {
@@ -477,10 +477,6 @@ impl Manager {
             Ok(false) => println!("That's too bad, I've heard great things about it."),
             Err(_) => println!("Error with the input."),
         }
-
-
-
-
     }
 }
 
@@ -554,9 +550,9 @@ fn main() {
 //         // println!("{:#?}", latest_tag);
 //
 //         if app.tag_name == latest_tag.tag_name && app.published_at == latest_tag.published_at{
-//             println!(" [✅] Latest tag already in use.");
+//             println!(" [✅ ] Latest tag already in use.");
 //         } else {
-//             println!(" [⚠️] Differences have been found!");
+//             println!(" [⚠️ ] Differences have been found!");
 //
 //             println!("\tCurrent tag:");
 //             println!("\t  Name: '{}'",app.tag_name);
