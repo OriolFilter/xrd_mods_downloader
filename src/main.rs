@@ -399,7 +399,8 @@ impl Manager {
     }
 
     fn update_app(&mut self, current:&AppStruct, latest:&TAG_INFO) {
-        let updated: bool = false;
+        println!("hi");
+        // let updated: bool = false;
         // if current.tag_name == latest.tag_name {
         //     println!("[✅] APP {} is up to date, skipping...",current.get_app_name());
         // } else {
@@ -419,7 +420,7 @@ impl Manager {
         // let apps_hashmap: HashMap<String, &AppStruct> = self.config.get_apps_hashmap();
 
         for (app_name,latest_tag_info) in &tags_hashmap {
-            match self.config.apps.get_mut(app_name) {
+            match self.config.apps.get(app_name) {
                 Some(current_app)  => {
                     print_different_versions(current_app,latest_tag_info);
                 }
@@ -437,10 +438,21 @@ impl Manager {
 
         // println!("Updating all the apps:");
         for (app_name,latest_tag_info) in &tags_hashmap {
-            match self.config.apps.get_mut(app_name) {
+            match self.config.apps.get(app_name) {
                 Some(current_app) => {
                     println!("{}", self.config.db_location);
-                    self.update_app(current_app,latest_tag_info);
+                    // self.update_app(current_app,latest_tag_info);
+                    if current_app.tag_name == latest_tag_info.tag_name {
+                        println!("[✅] APP {} is up to date, skipping...",current_app.get_app_name());
+                    } else {
+                        println!("[⚠️] Updating '{}'",current_app.get_app_name());
+                        match current_app.app_type {
+                            APP_TYPE::Unknown | APP_TYPE::WakeupTool => {println!("App '{}' doesn't have a update procedure. Skipping", current_app.get_app_name())}
+                            APP_TYPE::HitboxOverlay => {
+                                download_hitbox_overlay(&self.config.get_db_location(), latest_tag_info);
+                            }
+                        }
+                    }
                 }
                 None => {
                     println!("App '{}' not found. Skipping for tag with url '{}'", app_name, latest_tag_info.html_url);
