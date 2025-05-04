@@ -124,41 +124,6 @@ impl AppStruct {
 
         Ok(tag_info)
     }
-    // fn update_app(&mut self, mod_folder: &String, tag_info: TAG_INFO) {
-    //     // https://api.github.com/repos/kkots/ggxrd_hitbox_overlay_2211/releases/latest
-    //     println!("Updating app {} to tag {}",self.url,tag_info.id);
-    //
-    //     // check app directory exists
-    //     // let mut is_present:bool=Path::new(mod_folder).exists();
-    //     let mut is_dir:bool=Path::new(mod_folder).is_dir();
-    //
-    //     match is_dir {
-    //         true => {}
-    //         false => {
-    //             if let Err(e) = create_dir(mod_folder) {
-    //                 println!("Error: {}", e);
-    //                 println!("Error creating file.\nExiting...");
-    //                 exit(1);
-    //             }
-    //             println!("Created directory for the mod {} located at '{}'",self.repo_name,mod_folder)
-    //         }
-    //     }
-    //
-    //
-    //
-    //
-    //     // Update old values
-    //     self.published_at = tag_info.published_at.to_string();
-    //     self.id = tag_info.id;
-    //
-    //     // update app
-    //     match self.repo_name.as_str() {
-    //         "ggxrd_hitbox_overlay" => {
-    //             download_hitbox_overlay(mod_folder, tag_info);
-    //         }
-    //         _ => {}
-    //     }
-    // }
 
     fn get_repo_url(&self) -> String{
         format!("https://github.com/{}/{}",self.repo_owner,self.repo_name).to_string()
@@ -289,6 +254,7 @@ impl Config {
         let mut new_app_hashmap: HashMap<String,AppStruct> = HashMap::new();
         let mut holder_apps_vector: Vec<AppStruct> = vec![];
 
+        // Hitbox Overlay
         holder_apps_vector.push(
             AppStruct{
                 repo_owner: "kkots".to_string(),
@@ -301,6 +267,19 @@ impl Config {
             }
         );
 
+        // Wake up tool
+        holder_apps_vector.push(
+            AppStruct{
+                repo_owner: "Iquis".to_string(),
+                repo_name: "rev2-wakeup-tool".to_string(),
+                id: 0,
+                tag_name: "".to_string(),
+                published_at: "".to_string(),
+                app_type: APP_TYPE::WakeupTool,
+                url_source_version: "".to_string(),
+            }
+        );
+
         for app in holder_apps_vector {
             new_app_hashmap.insert(app.get_app_name(),app);
         }
@@ -308,7 +287,7 @@ impl Config {
         self.apps = new_app_hashmap;
     }
 
-    fn get_db_location (&mut self) -> String {
+    fn get_db_dir_path(&mut self) -> String {
         if &self.db_location == &"".to_string() {
             match env::current_exe() {
                 Ok(exe_path) => {
@@ -324,6 +303,9 @@ impl Config {
         };
 
         self.db_location.to_string()
+    }
+    fn get_db_path(&mut self) -> String {
+        format!("{}/{}",self.db_location,"db.json")
     }
     // fn get_apps_hashmap(&self) -> HashMap<String,&AppStruct>{
     //     let mut apps_hashmap: HashMap<String,&AppStruct> = HashMap::new();
@@ -351,7 +333,7 @@ fn print_different_versions(current:&AppStruct,latest:&TAG_INFO) {
     if current.tag_name == latest.tag_name {
         println!("[✅ ] APP {} is up to date!",current.get_app_name());
     } else {
-        println!("[⚠️ ] APP {} has a new version detected.",current.get_app_name());
+        println!("[⚠️] APP {} has a new version detected.",current.get_app_name());
 
         // Version
         println!("Version:\t'{}' -> '{}'",current.tag_name,latest.tag_name);
@@ -374,8 +356,15 @@ impl Manager {
         // TODO
 
     }
-    fn save_config(&self){
-        // TODO
+    fn save_config(&mut self) -> std::io::Result<()>  {
+        // &self.recreate_config();
+        // let config_string = serde_json::to_string(&self.apps)?;
+
+        let mut file = File::create(self.config.get_db_path())?;
+
+        let config_string = serde_json::to_string(&self.config)?;
+        file.write_all(config_string.as_bytes())?;
+        Ok(())
     }
 
     fn get_latest_tags_hash_map(&self) -> HashMap<String, TAG_INFO> {
@@ -399,7 +388,7 @@ impl Manager {
 
     fn update_app(&mut self, app_name: &String, latest_tag_info: &TAG_INFO) {
         // Create mod folder if required.
-        let modpath_dir = &format!("{}/{}", self.config.get_db_location(), app_name);
+        let modpath_dir = &format!("{}/{}", self.config.get_db_dir_path(), app_name);
 
         let mut is_dir:bool=Path::new(modpath_dir).is_dir();
 
@@ -422,9 +411,12 @@ impl Manager {
                 if current_app.tag_name == latest_tag_info.tag_name.to_string() {
                     println!("[✅ ] APP {} is up to date, skipping...",current_app.get_app_name());
                 } else {
-                    println!("[⚠️ ] Updating '{}'",current_app.get_app_name());
+                    println!("[⚠️] Updating '{}'",current_app.get_app_name());
                     match current_app.app_type {
-                        APP_TYPE::Unknown | APP_TYPE::WakeupTool => {println!("App '{}' doesn't have a update procedure. Skipping", current_app.get_app_name())}
+                        APP_TYPE::Unknown => {println!("[🚫] App '{}' doesn't have a update procedure. Skipping", current_app.get_app_name())}
+                        APP_TYPE::WakeupTool => {
+                            download_hitbox_overlay(modpath_dir, latest_tag_info);
+                        }
                         APP_TYPE::HitboxOverlay => {
                             download_hitbox_overlay(modpath_dir, latest_tag_info);
                         }
@@ -477,6 +469,15 @@ impl Manager {
             Ok(false) => println!("That's too bad, I've heard great things about it."),
             Err(_) => println!("Error with the input."),
         }
+
+        match self.save_config(){
+            Ok(_) => {
+                println!("Successfully saved the configuration.")
+            }
+            Err(e) => {
+                println!("Error Saving the configuration: '{}'",e)
+            }
+        }
     }
 }
 
@@ -503,36 +504,6 @@ fn main() {
     for app in &manager.config.apps {
         println!("{:?}",app);
     }
-
-    // // let mut config = OLD_CONFIG {
-    // //     mods_folder_path: mods_folder_path,
-    // //     _db_file_name: "db.json".to_string(),
-    // //     app_db: APP_DB { apps: vec![], db_location: "".to_string() },
-    // // };
-    // config.init();
-    // // load_db(&config);
-    // config.check_db_exists(true);
-    //
-    // if let Err(e) = load_apps(&mut config) {
-    //     println!("Error loading apps from the DB");
-    //     exit(1);
-    // }
-    // println!("Apps load from the DB");
-    //
-    // // for app in &config.app_db.apps{
-    // //     println!("{:?}",app);
-    // // }
-    //
-    // // let xrd_folder: String="/home/goblin/.local/share/Steam/steamapps/common/GUILTY GEAR Xrd -REVELATOR-/".to_string();
-    //
-    // // https://github.com/kkots/ggxrd_hitbox_overlay_2211
-    //
-    // // https://github.com/Iquis/rev2-wakeup-tool/
-    //
-    // // download_function_tool()
-    // // download_hitbox_overlay();
-    // check_app_updates(config);
-
 }
 
 
@@ -552,7 +523,7 @@ fn main() {
 //         if app.tag_name == latest_tag.tag_name && app.published_at == latest_tag.published_at{
 //             println!(" [✅ ] Latest tag already in use.");
 //         } else {
-//             println!(" [⚠️ ] Differences have been found!");
+//             println!(" [⚠️] Differences have been found!");
 //
 //             println!("\tCurrent tag:");
 //             println!("\t  Name: '{}'",app.tag_name);
@@ -593,40 +564,23 @@ fn main() {
 //     return;
 // }
 
-fn download_hitbox_overlay(destination_path: &String, tag_info: &TAG_INFO) {
-    let mut ggxrd_hitbox_overlay_zip: &TAG_ASSETS = &TAG_ASSETS {
-        id: 0,
-        name: "".to_string(),
-        content_type: "".to_string(),
-        state: "".to_string(),
-        size: 0,
-        browser_download_url: "".to_string(),
-    };
-
-    // Identify assets
-    // TODO FIX
-    for asset in &tag_info.assets {
-        match asset.name.as_str() {
-            "ggxrd_hitbox_overlay.zip" => {ggxrd_hitbox_overlay_zip = asset;}
-            _ => {}
-        }
-    }
-
+fn download_file_to_path(file_url: String, destination_dir: String){
     // Download overlay.zip
-    let file_to_download = Download::new(&ggxrd_hitbox_overlay_zip.browser_download_url);
+    let file_to_download = Download::new(&file_url);
+    let destination_file_path = &format!("{}/{}", destination_dir, file_to_download.file_name.to_str().unwrap().to_string());
 
     // Check if file already exists
-    let mut is_present:bool=Path::new(&format!("{}/{}",destination_path,ggxrd_hitbox_overlay_zip.name)).exists();
-    let mut is_dir:bool=Path::new(&format!("{}/{}",destination_path,ggxrd_hitbox_overlay_zip.name)).is_dir();
+    let mut is_present:bool=Path::new(destination_file_path).exists();
+    let mut is_dir:bool=Path::new(destination_file_path).is_dir();
 
     match (is_present,is_dir) {
         (true,false) => {
-            println!("A file with the name '{}' already exists, proceeding with the deletion.",&format!("{}/{}",destination_path,ggxrd_hitbox_overlay_zip.name));
-            fs::remove_file(&format!("{}/{}",destination_path,ggxrd_hitbox_overlay_zip.name));
+            println!("A file with the name '{}' already exists, proceeding with the deletion.",destination_file_path);
+            fs::remove_file(destination_file_path);
         }
         (true,true) => {
             // Error won't delete a folder
-            println!("The file '{}' cannot be downloaded due to a directory having the exact same name.",&format!("{}/{}",destination_path,ggxrd_hitbox_overlay_zip.name));
+            println!("The file '{}' cannot be downloaded due to a directory having the exact same name.",destination_file_path);
             exit(1);
         }
         _ => {}
@@ -640,7 +594,7 @@ fn download_hitbox_overlay(destination_path: &String, tag_info: &TAG_INFO) {
     // https://github.com/hunger/downloader
     let mut dl = Builder::default()
         .connect_timeout(Duration::from_secs(4))
-        .download_folder(Path::new(destination_path))
+        .download_folder(Path::new(&destination_dir))
         .parallel_requests(8)
         .build()
         .unwrap();
@@ -651,8 +605,62 @@ fn download_hitbox_overlay(destination_path: &String, tag_info: &TAG_INFO) {
         Ok(v) => println!("Downloaded: {:?}", v),
         Err(e) => println!("Error: {:?}", e),
     });
+}
 
-    install_hitbox_overlay(destination_path.to_string());
+
+fn download_hitbox_overlay(destination_dir: &String, tag_info: &TAG_INFO) {
+
+    let assets_whitelist = vec!["ggxrd_hitbox_overlay.zip".to_string()];
+
+    let mut matched_assets_list: Vec<&TAG_ASSETS> = vec![];
+
+    let mut ggxrd_hitbox_overlay_zip = &TAG_ASSETS {
+        id: 0,
+        name: "".to_string(),
+        content_type: "".to_string(),
+        state: "".to_string(),
+        size: 0,
+        browser_download_url: "".to_string(),
+    };
+
+    // Identify assets
+    // TODO FIX
+    for asset in &tag_info.assets {
+        if assets_whitelist.contains(&asset.name) {
+            matched_assets_list.push(asset);
+        }
+    }
+
+    for matched_asset in matched_assets_list {
+        download_file_to_path(matched_asset.browser_download_url.to_string(), destination_dir.to_string())
+    }
+
+    install_hitbox_overlay(destination_dir.to_string());
+}
+
+fn download_lquis_wake_up_tool(destination_path: &String, tag_info: &TAG_INFO) {
+    println!("TODO");
+    // let mut ggxrd_reversal_tool_zip= &TAG_ASSETS {
+    //     id: 0,
+    //     name: "".to_string(),
+    //     content_type: "".to_string(),
+    //     state: "".to_string(),
+    //     size: 0,
+    //     browser_download_url: "".to_string(),
+    // };
+    //
+    // // Identify assets
+    // // TODO FIX
+    // for asset in &tag_info.assets {
+    //     match asset.name.as_str() {
+    //         format!("GGXrdReversalTool{}.zip",) => {ggxrd_hitbox_overlay_zip = asset;}
+    //         _ => {}
+    //     }
+    // }
+
+
+
+    // install_hitbox_overlay(destination_path.to_string());
 }
 
 fn install_hitbox_overlay(download_path: String){
@@ -691,14 +699,3 @@ fn install_hitbox_overlay(download_path: String){
         }
     }
 }
-
-
-// fn download_app(config: CONFIG, url: String,tag_info: TAG_INFO){
-//     match url.as_str() {
-//         "https://api.github.com/repos/kkots/ggxrd_hitbox_overlay_2211" => {
-//              download_hitbox_overlay(config.mods_folder_path);
-//         }
-//         other => {println!("No download option found that matches the URL  '{other}', cannot proceed with the download.")}
-//     }
-//
-// }
