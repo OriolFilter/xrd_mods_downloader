@@ -398,50 +398,10 @@ impl Manager {
 
     }
 
-    fn update_app(&mut self, current:&AppStruct, latest:&TAG_INFO) {
-        println!("hi");
-        // let updated: bool = false;
-        // if current.tag_name == latest.tag_name {
-        //     println!("[✅] APP {} is up to date, skipping...",current.get_app_name());
-        // } else {
-        //     println!("[⚠️] Updating '{}'",current.get_app_name());
-        //     match current.app_type {
-        //         APP_TYPE::Unknown | APP_TYPE::WakeupTool => {println!("App '{}' doesn't have a update procedure. Skipping", current.get_app_name())}
-        //         APP_TYPE::HitboxOverlay => {
-        //             download_hitbox_overlay(&self.config.get_db_location(), latest);
-        //         }
-        //     }
-        // }
-    }
-
-    fn update_all(&mut self){
-        // Get ALL tags -> then compare -> prompt
-        let tags_hashmap: HashMap<String, TAG_INFO> = self.get_latest_tags_hash_map();
-        // let apps_hashmap: HashMap<String, &AppStruct> = self.config.get_apps_hashmap();
-
-        for (app_name,latest_tag_info) in &tags_hashmap {
-            match self.config.apps.get(app_name) {
-                Some(current_app)  => {
-                    print_different_versions(current_app,latest_tag_info);
-                }
-                None => {
-                    println!("App '{}' not found. Skipping for tag with url '{}'",app_name,latest_tag_info.html_url);
-                }
-            }
-        }
-
-        // let target_app = self.config.get_app_from_appname(self.config.apps[0].get_app_name());
-        // println!("{:#?}", target_app);
-
-        // println!("## {:#?}",self.config.apps);
-        // println!("## {:#?}",tags_hashmap);
-
-        // println!("Updating all the apps:");
-        for (app_name,latest_tag_info) in &tags_hashmap {
-            match self.config.apps.get(app_name) {
+    fn update_app(&mut self, app_name:&String, latest_tag_info:&TAG_INFO) {
+        match self.config.apps.get(app_name) {
                 Some(current_app) => {
                     println!("{}", self.config.db_location);
-                    // self.update_app(current_app,latest_tag_info);
                     if current_app.tag_name == latest_tag_info.tag_name {
                         println!("[✅] APP {} is up to date, skipping...",current_app.get_app_name());
                     } else {
@@ -458,6 +418,24 @@ impl Manager {
                     println!("App '{}' not found. Skipping for tag with url '{}'", app_name, latest_tag_info.html_url);
                 }
             }
+    }
+
+    fn update_all(&mut self){
+        let tags_hashmap: HashMap<String, TAG_INFO> = self.get_latest_tags_hash_map();
+
+        for (app_name,latest_tag_info) in &tags_hashmap {
+            match self.config.apps.get(app_name) {
+                Some(current_app)  => {
+                    print_different_versions(current_app,latest_tag_info);
+                }
+                None => {
+                    println!("App '{}' not found. Skipping for tag with url '{}'",app_name,latest_tag_info.html_url);
+                }
+            }
+        }
+
+        for (app_name,latest_tag_info) in &tags_hashmap {
+            self.update_app(app_name, latest_tag_info);
         }
         //     // println!("> {:#?}",app_name);
         //     // println!(">> {:#?}",tag_info);
@@ -642,7 +620,7 @@ fn main() {
 // }
 
 fn download_hitbox_overlay(destination_path: &String, tag_info: &TAG_INFO) {
-    let mut ggxrd_hitbox_overlay_zip: TAG_ASSETS = TAG_ASSETS {
+    let mut ggxrd_hitbox_overlay_zip: &TAG_ASSETS = &TAG_ASSETS {
         id: 0,
         name: "".to_string(),
         content_type: "".to_string(),
@@ -651,55 +629,55 @@ fn download_hitbox_overlay(destination_path: &String, tag_info: &TAG_INFO) {
         browser_download_url: "".to_string(),
     };
 
-    // // Identify assets
-    // for asset in tag_info.assets {
-    //     match asset.name.as_str() {
-    //         "ggxrd_hitbox_overlay.zip" => {ggxrd_hitbox_overlay_zip=asset;}
-    //         _ => {}
-    //     }
-    // }
-    //
-    // // Download overlay.zip
-    // let file_to_download = Download::new(&ggxrd_hitbox_overlay_zip.browser_download_url);
-    //
-    // // Check if file already exists
-    // let mut is_present:bool=Path::new(&format!("{}/{}",destination_path,ggxrd_hitbox_overlay_zip.name)).exists();
-    // let mut is_dir:bool=Path::new(&format!("{}/{}",destination_path,ggxrd_hitbox_overlay_zip.name)).is_dir();
-    //
-    // match (is_present,is_dir) {
-    //     (true,false) => {
-    //         println!("A file with the name '{}' already exists, proceeding with the deletion.",&format!("{}/{}",destination_path,ggxrd_hitbox_overlay_zip.name));
-    //         fs::remove_file(&format!("{}/{}",destination_path,ggxrd_hitbox_overlay_zip.name));
-    //     }
-    //     (true,true) => {
-    //         // Error won't delete a folder
-    //         println!("The file '{}' cannot be downloaded due to a directory having the exact same name.",&format!("{}/{}",destination_path,ggxrd_hitbox_overlay_zip.name));
-    //         exit(1);
-    //     }
-    //     _ => {}
-    //
-    // }
-    //
-    //
-    // // let mut is_dir:bool=Path::new(mod_folder).is_dir();
-    //
-    // // copy pasta
-    // // https://github.com/hunger/downloader
-    // let mut dl = Builder::default()
-    //     .connect_timeout(Duration::from_secs(4))
-    //     .download_folder(Path::new(destination_path))
-    //     .parallel_requests(8)
-    //     .build()
-    //     .unwrap();
-    //
-    // let response = dl.download(&[file_to_download]).unwrap(); // other error handling
-    //
-    // response.iter().for_each(|v| match v {
-    //     Ok(v) => println!("Downloaded: {:?}", v),
-    //     Err(e) => println!("Error: {:?}", e),
-    // });
-    //
-    // install_hitbox_overlay(destination_path.to_string());
+    // Identify assets
+    for asset in &tag_info.assets {
+        match asset.name.as_str() {
+            "ggxrd_hitbox_overlay.zip" => {ggxrd_hitbox_overlay_zip = asset;}
+            _ => {}
+        }
+    }
+
+    // Download overlay.zip
+    let file_to_download = Download::new(&ggxrd_hitbox_overlay_zip.browser_download_url);
+
+    // Check if file already exists
+    let mut is_present:bool=Path::new(&format!("{}/{}",destination_path,ggxrd_hitbox_overlay_zip.name)).exists();
+    let mut is_dir:bool=Path::new(&format!("{}/{}",destination_path,ggxrd_hitbox_overlay_zip.name)).is_dir();
+
+    match (is_present,is_dir) {
+        (true,false) => {
+            println!("A file with the name '{}' already exists, proceeding with the deletion.",&format!("{}/{}",destination_path,ggxrd_hitbox_overlay_zip.name));
+            fs::remove_file(&format!("{}/{}",destination_path,ggxrd_hitbox_overlay_zip.name));
+        }
+        (true,true) => {
+            // Error won't delete a folder
+            println!("The file '{}' cannot be downloaded due to a directory having the exact same name.",&format!("{}/{}",destination_path,ggxrd_hitbox_overlay_zip.name));
+            exit(1);
+        }
+        _ => {}
+
+    }
+
+
+    // let mut is_dir:bool=Path::new(mod_folder).is_dir();
+
+    // copy pasta
+    // https://github.com/hunger/downloader
+    let mut dl = Builder::default()
+        .connect_timeout(Duration::from_secs(4))
+        .download_folder(Path::new(destination_path))
+        .parallel_requests(8)
+        .build()
+        .unwrap();
+
+    let response = dl.download(&[file_to_download]).unwrap(); // other error handling
+
+    response.iter().for_each(|v| match v {
+        Ok(v) => println!("Downloaded: {:?}", v),
+        Err(e) => println!("Error: {:?}", e),
+    });
+
+    install_hitbox_overlay(destination_path.to_string());
 }
 
 fn install_hitbox_overlay(download_path: String){
