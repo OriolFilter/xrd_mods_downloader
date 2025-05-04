@@ -45,18 +45,10 @@ enum APP_TYPE {
     #[default]
     Unknown,
     HitboxOverlay,
-    WakeupTool
+    WakeupTool,
+    FasterLoadingTimes
 }
 
-impl APP_TYPE {
-    fn name(self) -> String {
-        match self {
-            APP_TYPE::HitboxOverlay => {"hitbox_overlay".to_string()}
-            APP_TYPE::WakeupTool => {"wakeup_tool".to_string()}
-            _ => {"".to_string()}
-        }
-    }
-}
 
 #[derive(Serialize, Deserialize, Debug)]
 struct AppStruct {
@@ -85,7 +77,6 @@ impl AppStruct {
         let mut assets_whitelist:Vec<String> = vec![];
 
         match self.app_type {
-            APP_TYPE::Unknown => {}
             APP_TYPE::WakeupTool => {
                 assets_whitelist = vec![
                     format!("GGXrdReversalTool.{}.zip",tag_info.tag_name), // Iquis
@@ -95,6 +86,18 @@ impl AppStruct {
             APP_TYPE::HitboxOverlay => {
                 assets_whitelist = vec!["ggxrd_hitbox_overlay.zip".to_string()];
             }
+            APP_TYPE::FasterLoadingTimes => {
+                if cfg!(windows) {
+                    assets_whitelist = vec!["GGXrdFasterLoadingTimes.exe".to_string()];
+                }
+                else if cfg!(unix) {
+                    assets_whitelist = vec!["GGXrdFasterLoadingTimes_linux".to_string()];
+                }
+                else {
+                    println!("Neither Linux or Windows detected, skipping tag {}",tag_info.tag_name);
+                }
+            }
+            _ => {}
         }
 
         let mut matched_assets_list: Vec<&TAG_ASSETS> = vec![];
@@ -327,6 +330,19 @@ impl Config {
             }
         );
 
+        // Faster Loading Times kkots
+        holder_apps_vector.push(
+            AppStruct{
+                repo_owner: "kkots".to_string(),
+                repo_name: "GGXrdFasterLoadingTimes".to_string(),
+                id: 0,
+                tag_name: "".to_string(),
+                published_at: "".to_string(),
+                app_type: APP_TYPE::FasterLoadingTimes,
+                url_source_version: "".to_string(),
+            }
+        );
+
         for app in holder_apps_vector {
             new_app_hashmap.insert(app.get_app_name(),app);
         }
@@ -465,13 +481,10 @@ impl Manager {
                 } else {
                     println!("[⚠️] Updating '{}'",current_app.get_app_name());
                     match current_app.app_type {
-                        APP_TYPE::Unknown => {println!("[🚫] App '{}' doesn't have a update procedure. Skipping", current_app.get_app_name())}
-                        APP_TYPE::WakeupTool => {
+                        APP_TYPE::HitboxOverlay | APP_TYPE::FasterLoadingTimes | APP_TYPE::WakeupTool => {
                             current_app.download_mod(modpath_dir, latest_tag_info);
                         }
-                        APP_TYPE::HitboxOverlay => {
-                            current_app.download_mod(modpath_dir, latest_tag_info);
-                        }
+                        _ => {println!("[🚫] App '{}' of type {:?} doesn't have a update procedure. Skipping", current_app.get_app_name(),current_app.app_type)}
                     }
                 }
             }
