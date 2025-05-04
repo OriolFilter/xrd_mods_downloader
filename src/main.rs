@@ -80,6 +80,42 @@ impl AppStruct {
     fn get_app_name(&self) -> String {
         format!("{}/{}",self.repo_owner,self.repo_name).to_string()
     }
+
+    fn download_mod(&self,destination_dir: &String, tag_info: &TAG_INFO) {
+        let mut assets_whitelist:Vec<String> = vec![];
+
+        match self.app_type {
+            APP_TYPE::Unknown => {}
+            APP_TYPE::WakeupTool => {
+                assets_whitelist = vec![
+                    format!("GGXrdReversalTool.{}.zip",tag_info.tag_name), // Iquis
+                    format!("GGXrdReversalTool-{}.zip",tag_info.tag_name) // Kkots
+                ];
+            }
+            APP_TYPE::HitboxOverlay => {
+                assets_whitelist = vec!["ggxrd_hitbox_overlay.zip".to_string()];
+            }
+        }
+
+        let mut matched_assets_list: Vec<&TAG_ASSETS> = vec![];
+
+        for asset in &tag_info.assets {
+            if assets_whitelist.contains(&asset.name) {
+                matched_assets_list.push(asset);
+            }
+        }
+
+        for matched_asset in &matched_assets_list {
+            download_file_to_path(matched_asset.browser_download_url.to_string(), destination_dir.to_string())
+        }
+
+        for matched_asset in matched_assets_list {
+            if matched_asset.name.ends_with(".zip") {
+                unzip_file(format!("{}/{}",destination_dir.to_string(),matched_asset.name),destination_dir.to_string());
+            }
+        }
+    }
+
 }
 
 impl AppStruct {
@@ -415,10 +451,10 @@ impl Manager {
                     match current_app.app_type {
                         APP_TYPE::Unknown => {println!("[🚫] App '{}' doesn't have a update procedure. Skipping", current_app.get_app_name())}
                         APP_TYPE::WakeupTool => {
-                            download_wake_up_tool(modpath_dir, latest_tag_info);
+                            current_app.download_mod(modpath_dir, latest_tag_info);
                         }
                         APP_TYPE::HitboxOverlay => {
-                            download_hitbox_overlay(modpath_dir, latest_tag_info);
+                            current_app.download_mod(modpath_dir, latest_tag_info);
                         }
                     }
                 }
@@ -607,62 +643,14 @@ fn download_file_to_path(file_url: String, destination_dir: String){
     });
 }
 
-
-fn download_hitbox_overlay(destination_dir: &String, tag_info: &TAG_INFO) {
-    let assets_whitelist = vec!["ggxrd_hitbox_overlay.zip".to_string()];
-
-    let mut matched_assets_list: Vec<&TAG_ASSETS> = vec![];
-
-    // Identify assets
-    // TODO FIX
-    for asset in &tag_info.assets {
-        if assets_whitelist.contains(&asset.name) {
-            matched_assets_list.push(asset);
-        }
-    }
-
-    for matched_asset in matched_assets_list {
-        download_file_to_path(matched_asset.browser_download_url.to_string(), destination_dir.to_string())
-    }
-
-    install_hitbox_overlay(destination_dir.to_string());
-}
-
-fn download_wake_up_tool(destination_dir: &String, tag_info: &TAG_INFO) {
-    let assets_whitelist = vec![
-        format!("GGXrdReversalTool.{}.zip",tag_info.tag_name), // Iquis
-        format!("GGXrdReversalTool-{}.zip",tag_info.tag_name) // Kkots
-    ];
-
-    let mut matched_assets_list: Vec<&TAG_ASSETS> = vec![];
-
-    // Identify assets
-    // TODO FIX
-    for asset in &tag_info.assets {
-        if assets_whitelist.contains(&asset.name) {
-            matched_assets_list.push(asset);
-        }
-    }
-
-    for matched_asset in matched_assets_list {
-        download_file_to_path(matched_asset.browser_download_url.to_string(), destination_dir.to_string())
-    }
-
-    // install_hitbox_overlay(destination_dir.to_string());
-}
-
-fn install_hitbox_overlay(download_path: String){
-    // copy pasta
-    // https://github.com/zip-rs/zip2/blob/master/examples/extract.rs
-
-    let fname = format!("{}/{}",download_path,"ggxrd_hitbox_overlay.zip");
-    let zipfile = std::fs::File::open(fname).unwrap();
+fn unzip_file(zip_file_path: String, unzip_dir:String){
+    let zipfile = std::fs::File::open(zip_file_path).unwrap();
 
     let mut archive = zip::ZipArchive::new(zipfile).unwrap();
 
     for i in 0..archive.len() {
         let mut file = archive.by_index(i).unwrap();
-        let outpath = format!("{}/{}",download_path,file.name());
+        let outpath = format!("{}/{}",unzip_dir,file.name());
         println!("{:?}", outpath);
 
         {
