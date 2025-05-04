@@ -47,7 +47,8 @@ enum APP_TYPE {
     HitboxOverlay,
     WakeupTool,
     FasterLoadingTimes,
-    MirrorColorSelect
+    MirrorColorSelect,
+    BackgroundGamepad
 }
 
 
@@ -100,6 +101,17 @@ impl AppStruct {
             }
             APP_TYPE::MirrorColorSelect => {
                 assets_whitelist = vec!["GGXrdMirrorColorSelect.zip".to_string()];
+            }
+            APP_TYPE::BackgroundGamepad => {
+                if cfg!(windows) {
+                    assets_whitelist = vec!["GGXrdBackgroundGamepad.exe".to_string()];
+                }
+                else if cfg!(unix) {
+                    assets_whitelist = vec!["GGXrdBackgroundGamepad_linux".to_string()];
+                }
+                else {
+                    println!("Neither Linux or Windows detected, skipping tag {}",tag_info.tag_name);
+                }
             }
 
             APP_TYPE::Unknown | _ => {}
@@ -361,6 +373,20 @@ impl Config {
             }
         );
 
+
+        // Background Gamepad kkots
+        holder_apps_vector.push(
+            AppStruct{
+                repo_owner: "kkots".to_string(),
+                repo_name: "GGXrdBackgroundGamepad".to_string(),
+                id: 0,
+                tag_name: "".to_string(),
+                published_at: "".to_string(),
+                app_type: APP_TYPE::MirrorColorSelect,
+                url_source_version: "".to_string(),
+            }
+        );
+
         for app in holder_apps_vector {
             new_app_hashmap.insert(app.get_app_name(),app);
         }
@@ -499,7 +525,7 @@ impl Manager {
                 } else {
                     println!("[⚠️] Updating '{}'",current_app.get_app_name());
                     match current_app.app_type {
-                        APP_TYPE::HitboxOverlay | APP_TYPE::FasterLoadingTimes | APP_TYPE::WakeupTool | APP_TYPE::MirrorColorSelect => {
+                        APP_TYPE::HitboxOverlay | APP_TYPE::FasterLoadingTimes | APP_TYPE::WakeupTool | APP_TYPE::MirrorColorSelect | APP_TYPE::BackgroundGamepad => {
                             current_app.download_mod(modpath_dir, latest_tag_info);
                         }
                         _ => {println!("[🚫] App '{}' of type {:?} doesn't have a update procedure. Skipping", current_app.get_app_name(),current_app.app_type)}
