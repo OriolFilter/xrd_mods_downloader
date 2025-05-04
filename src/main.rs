@@ -1,10 +1,10 @@
-use std::fmt::format;
+use std::fmt::{format, Write as StdinWrite};
 use std::{fs, io};
 use std::collections::HashMap;
-use std::fs::{File, create_dir, create_dir_all};
+use std::fs::{File, create_dir, create_dir_all, Permissions};
 use std::io::{Read, Seek, Write};
 use std::path::Path;
-use std::process::exit;
+use std::process::{exit, Stdio};
 use futures::future::{err, SelectAll};
 use reqwest;
 use serde::{Deserialize, Serialize};
@@ -16,8 +16,10 @@ use zip::ZipArchive;
 use std::env;
 use std::io::SeekFrom::Current;
 use std::ops::BitOr;
+use std::os::unix::fs::PermissionsExt;
 use downloader::Verification::Failed;
 use futures::Stream;
+use std::process::Command;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct TAG_ASSETS {
@@ -146,15 +148,87 @@ impl AppStruct {
         }
     }
 
-    fn patch_app(&mut self, xrd_game_folder: &String,downloads_mod_path: &String, tag_info: &TAG_INFO){
-        let mut files_to_move_whitelist:Vec<String> = vec![];
+    fn patch_app(&self, xrd_game_folder: String, downloaded_mod_folder: &String, tag_info: &TAG_INFO) -> io::Result<()> {
+        let xrd_binaries_folder_path = format!("{}/Binaries/Win32", xrd_game_folder);
+        let mut files_to_copy_and_remove:Vec<String> = vec![]; // files to copy and later can be removed
+        let mut files_to_copy:Vec<String> = vec![]; // files to only copy
+        let mut file_to_execute:String = String::new(); // file to copy, execute, and delete.
+        let mut stdin: String = String::new();
 
+        // prepare patch
         match self.app_type {
             APP_TYPE::HitboxOverlay => {
-                files_to_move_whitelist = vec!["".to_string()];
+                files_to_copy_and_remove = vec![
+                    "ggxrd_hitbox_overlay.dll".to_string(),
+                ];
+
+                files_to_copy = vec![
+                    "ggxrd_hitbox_overlay.ini".to_string(), // this will override any existing config tho //TODO
+                ];
+
+                file_to_execute = "ggxrd_hitbox_patcher_linux".to_string();
+
+                stdin=format!("\n{}/GuiltyGearXrd.exe\n",xrd_binaries_folder_path);
             }
             APP_TYPE::Unknown | _ => {}
         }
+
+        files_to_copy.extend(files_to_copy_and_remove.to_owned());
+        files_to_copy.push(file_to_execute.to_string());
+        for filename in files_to_copy {
+            // Copy from local_mod_folder to xrd_game_folder
+            let source_file_path = format!("{}/{}", downloaded_mod_folder, filename);
+            let destination_new_file_path = format!("{}/{}", xrd_binaries_folder_path, filename);
+            match fs::copy(source_file_path.to_string(), destination_new_file_path.to_string()) {
+                Ok(_) => {}
+                Err(e) => {
+                    println!("Error copying '{}' -> '{}' <{e}>.", source_file_path,destination_new_file_path);
+                }
+            }
+        }
+
+        if !file_to_execute.is_empty() {
+            let executable_filepath = format!("{}/{}", downloaded_mod_folder, file_to_execute);
+
+            // set chmod +x permissions (linux)
+            if cfg!(unix) {
+                let permissions = Permissions::from_mode(0o755);
+                fs::set_permissions(executable_filepath.to_string(),permissions)?;
+            }
+
+            if cfg!(unix) {
+                println!("Executing {}",executable_filepath);
+                let mut child = Command::new(executable_filepath.to_string())
+                    .stdin(Stdio::piped()).spawn()?;
+
+                println!("==============\n=== Stdout ===\n==============");
+                let mut stdin_pipe = child.stdin.take().unwrap();
+                stdin_pipe.write_all(stdin.as_bytes()).unwrap();
+                child.wait().unwrap();
+
+
+                println!("==============\n=== Stderr ===\n==============");
+                println!("Stdout: {:#?}", child.stderr);
+            }
+            else { println!("Currently only linux is supported for auto patching execution. Files will be copied to the respective path" ) }
+
+        }
+
+        if cfg!(unix) {
+            // cleanup (only in linux)
+            for filename in files_to_copy_and_remove {
+                let file_to_delete = format!("{}/{}", xrd_binaries_folder_path, filename);
+                match fs::remove_file(file_to_delete.to_string()) {
+                    Ok(_) => {}
+                    Err(e) => {
+                        println!("Error deleting file '{}' <{e}>.", file_to_delete);
+                    }
+                }
+            }
+        }
+
+        exit(1234);
+        println!(">:) bye");
     }
 
     #[tokio::main]
@@ -335,77 +409,77 @@ impl Config {
                 automatically_patch: false,
             }
         );
-
-        // Wake up tool Iquis
-        holder_apps_vector.push(
-            AppStruct{
-                repo_owner: "Iquis".to_string(),
-                repo_name: "rev2-wakeup-tool".to_string(),
-                id: 0,
-                tag_name: "".to_string(),
-                published_at: "".to_string(),
-                app_type: APP_TYPE::WakeupTool,
-                url_source_version: "".to_string(),
-                automatically_patch: false,
-            }
-        );
-
-        // Wake up tool kkots
-        holder_apps_vector.push(
-            AppStruct{
-                repo_owner: "kkots".to_string(),
-                repo_name: "rev2-wakeup-tool".to_string(),
-                id: 0,
-                tag_name: "".to_string(),
-                published_at: "".to_string(),
-                app_type: APP_TYPE::WakeupTool,
-                url_source_version: "".to_string(),
-                automatically_patch: false,
-            }
-        );
-
-        // Faster Loading Times kkots
-        holder_apps_vector.push(
-            AppStruct{
-                repo_owner: "kkots".to_string(),
-                repo_name: "GGXrdFasterLoadingTimes".to_string(),
-                id: 0,
-                tag_name: "".to_string(),
-                published_at: "".to_string(),
-                app_type: APP_TYPE::FasterLoadingTimes,
-                url_source_version: "".to_string(),
-                automatically_patch: false,
-            }
-        );
-
-        // Mirror Color Select kkots
-        holder_apps_vector.push(
-            AppStruct{
-                repo_owner: "kkots".to_string(),
-                repo_name: "GGXrdMirrorColorSelect".to_string(),
-                id: 0,
-                tag_name: "".to_string(),
-                published_at: "".to_string(),
-                app_type: APP_TYPE::MirrorColorSelect,
-                url_source_version: "".to_string(),
-                automatically_patch: false,
-            }
-        );
-
-
-        // Background Gamepad kkots
-        holder_apps_vector.push(
-            AppStruct{
-                repo_owner: "kkots".to_string(),
-                repo_name: "GGXrdBackgroundGamepad".to_string(),
-                id: 0,
-                tag_name: "".to_string(),
-                published_at: "".to_string(),
-                app_type: APP_TYPE::MirrorColorSelect,
-                url_source_version: "".to_string(),
-                automatically_patch: false,
-            }
-        );
+        //
+        // // Wake up tool Iquis
+        // holder_apps_vector.push(
+        //     AppStruct{
+        //         repo_owner: "Iquis".to_string(),
+        //         repo_name: "rev2-wakeup-tool".to_string(),
+        //         id: 0,
+        //         tag_name: "".to_string(),
+        //         published_at: "".to_string(),
+        //         app_type: APP_TYPE::WakeupTool,
+        //         url_source_version: "".to_string(),
+        //         automatically_patch: false,
+        //     }
+        // );
+        //
+        // // Wake up tool kkots
+        // holder_apps_vector.push(
+        //     AppStruct{
+        //         repo_owner: "kkots".to_string(),
+        //         repo_name: "rev2-wakeup-tool".to_string(),
+        //         id: 0,
+        //         tag_name: "".to_string(),
+        //         published_at: "".to_string(),
+        //         app_type: APP_TYPE::WakeupTool,
+        //         url_source_version: "".to_string(),
+        //         automatically_patch: false,
+        //     }
+        // );
+        //
+        // // Faster Loading Times kkots
+        // holder_apps_vector.push(
+        //     AppStruct{
+        //         repo_owner: "kkots".to_string(),
+        //         repo_name: "GGXrdFasterLoadingTimes".to_string(),
+        //         id: 0,
+        //         tag_name: "".to_string(),
+        //         published_at: "".to_string(),
+        //         app_type: APP_TYPE::FasterLoadingTimes,
+        //         url_source_version: "".to_string(),
+        //         automatically_patch: false,
+        //     }
+        // );
+        //
+        // // Mirror Color Select kkots
+        // holder_apps_vector.push(
+        //     AppStruct{
+        //         repo_owner: "kkots".to_string(),
+        //         repo_name: "GGXrdMirrorColorSelect".to_string(),
+        //         id: 0,
+        //         tag_name: "".to_string(),
+        //         published_at: "".to_string(),
+        //         app_type: APP_TYPE::MirrorColorSelect,
+        //         url_source_version: "".to_string(),
+        //         automatically_patch: false,
+        //     }
+        // );
+        //
+        //
+        // // Background Gamepad kkots
+        // holder_apps_vector.push(
+        //     AppStruct{
+        //         repo_owner: "kkots".to_string(),
+        //         repo_name: "GGXrdBackgroundGamepad".to_string(),
+        //         id: 0,
+        //         tag_name: "".to_string(),
+        //         published_at: "".to_string(),
+        //         app_type: APP_TYPE::MirrorColorSelect,
+        //         url_source_version: "".to_string(),
+        //         automatically_patch: false,
+        //     }
+        // );
 
         for app in holder_apps_vector {
             new_app_hashmap.insert(app.get_app_name(),app);
@@ -441,25 +515,22 @@ impl Config {
     }
 
     fn get_xrd_game_folder(&mut self) -> String {
-        match self.xrd_game_folder.is_empty() {
-            false => {}, // if self.xrd_game_folder is set, it will be returned at the end.
-            true => {
-                let mut file_path = "";
+        if self.xrd_game_folder.is_empty() {
+            let mut file_path = "";
 
-                if cfg!(windows) {
-                    println!("Windows is not supported");
-                    exit(1);
-                }
-                else if cfg!(unix) {
-                    file_path = "/home/????/.local/share/Steam/config/libraryfolders.vdf";
-
-                }
-                else {
-                    println!("Neither Linux or Windows detected, skipping tag.");
-                    exit(1);
-                }
-                self.xrd_game_folder = get_xrd_folder_from_file(file_path.to_string()).unwrap().to_string();
+            if cfg!(windows) {
+                println!("Windows is not supported");
+                exit(1);
             }
+            else if cfg!(unix) {
+                file_path = "/home/????/.local/share/Steam/config/libraryfolders.vdf";
+
+            }
+            else {
+                println!("Neither Linux or Windows detected, skipping tag.");
+                exit(1);
+            }
+            self.xrd_game_folder = get_xrd_folder_from_file(file_path.to_string()).unwrap().to_string();
         }
         self.xrd_game_folder.to_string()
     }
@@ -478,7 +549,6 @@ fn get_xrd_folder_from_file (steam_vdf_file_path: String) -> std::io::Result<Str
 
     while xrd_line < 0 && current_line_count < contents.lines().count() {
         current_line_string = file_lines.next().unwrap().to_string();
-
 
         if current_line_string.contains(xrd_game_id_txt)  {
             xrd_line = current_line_count as i32;
@@ -501,8 +571,7 @@ fn get_xrd_folder_from_file (steam_vdf_file_path: String) -> std::io::Result<Str
         exit(1);
     }
 
-
-    Ok(last_storage_path)
+    Ok(format!("{}/steamapps/common/GUILTY GEAR Xrd -REVELATOR-",last_storage_path))
 
 }
 
@@ -591,15 +660,19 @@ impl Manager {
 
     fn patch_app(&mut self, app_name: &String, latest_tag_info: &TAG_INFO) {
         let modpath_dir = &format!("{}/{}", self.config.get_db_dir_path(), app_name);
+        let xrd_game_folder = self.config.get_xrd_game_folder();
 
         match self.config.apps.get(app_name) {
             Some(current_app) => {
                 println!("[🚧️] Patching '{}'",current_app.get_app_name());
+
                 match current_app.app_type {
                     APP_TYPE::HitboxOverlay => {
-                        let xrd_folder: String = self.config.get_xrd_game_folder().to_string();
-                        current_app.patch_app(xrd_folder, modpath_dir, latest_tag_info);
-                        // println!("Xrd folder {}",xrd_folder);
+                        match current_app.patch_app(xrd_game_folder, modpath_dir, latest_tag_info) {
+                            Ok(_) => {}
+                            Err(e) => {println!("Error when patching app '{}' '{e}'",app_name)}
+                        }
+
                     }
                     _ => {println!("[🚫] App '{}' of type {:?} doesn't have a patch procedure. Skipping", current_app.get_app_name(),current_app.app_type)}
                 }
@@ -608,13 +681,8 @@ impl Manager {
                 println!("App '{}' not found. Skipping for tag with url '{}'", app_name, latest_tag_info.html_url);
             }
         }
-
-
-
-
     }
     fn update_app(&mut self, app_name: &String, latest_tag_info: &TAG_INFO) {
-        // Create mod folder if required.
         let modpath_dir = &format!("{}/{}", self.config.get_db_dir_path(), app_name);
 
         let mut is_dir:bool=Path::new(modpath_dir).is_dir();
@@ -653,7 +721,7 @@ impl Manager {
         }
 
 
-        // Update app ionfo
+        // Update app info
         let mut app_to_update = self.config.apps.get_mut(app_name).unwrap();
         app_to_update.tag_name = latest_tag_info.tag_name.to_string();
         app_to_update.published_at = latest_tag_info.published_at.to_string();
@@ -696,18 +764,18 @@ impl Manager {
             match ans {
                 Ok(true) => {
                     // Download
-                    for (app_name,latest_tag_info) in &tags_hashmap {
-                        self.update_app(app_name, latest_tag_info);
-                    }
-
-                    match self.save_config(){
-                        Ok(_) => {
-                            println!("Successfully saved the configuration.")
-                        }
-                        Err(e) => {
-                            println!("Error Saving the configuration: '{}'",e)
-                        }
-                    }
+                    // for (app_name,latest_tag_info) in &tags_hashmap {
+                    //     self.update_app(app_name, latest_tag_info);
+                    // }
+                    //
+                    // match self.save_config(){
+                    //     Ok(_) => {
+                    //         println!("Successfully saved the configuration.")
+                    //     }
+                    //     Err(e) => {
+                    //         println!("Error Saving the configuration: '{}'",e)
+                    //     }
+                    // }
 
                     // Automatically patch apps (for those enabled)
                     for (app_name,latest_tag_info) in &tags_hashmap {
