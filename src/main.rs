@@ -1,7 +1,7 @@
 use std::fmt::format;
 use std::{fs, io};
 use std::collections::HashMap;
-use std::fs::{File, create_dir};
+use std::fs::{File, create_dir, create_dir_all};
 use std::io::{Read, Seek, Write};
 use std::path::Path;
 use std::process::exit;
@@ -62,16 +62,16 @@ impl APP_TYPE {
 struct AppStruct {
     repo_owner: String,
     repo_name: String,
+    // App type identifier
     #[serde(default)]
-    url: String, // TODO not use
+    app_type: APP_TYPE,
+    // To update with each version
     #[serde(default)]
     id: i32,
     #[serde(default)]
     tag_name: String,
     #[serde(default)]
     published_at: String,
-    #[serde(default)]
-    app_type: APP_TYPE,
     #[serde(default)]
     url_source_version: String
 }
@@ -118,7 +118,7 @@ impl AppStruct {
                 tag_info = response.json().await.unwrap();
             }
             other => {
-                println!("Unknown error. Status code {} when getting the latest tag for the repository {}",other, self.url);
+                println!("Unknown error. Status code {} when getting the latest tag for the repository {}",other, self.get_api_repo_url());
             }
         }
 
@@ -293,7 +293,6 @@ impl Config {
             AppStruct{
                 repo_owner: "kkots".to_string(),
                 repo_name: "ggxrd_hitbox_overlay_2211".to_string(),
-                url: "".to_string(),
                 id: 0,
                 tag_name: "".to_string(),
                 published_at: "".to_string(),
@@ -398,27 +397,57 @@ impl Manager {
 
     }
 
-    fn update_app(&mut self, app_name:&String, latest_tag_info:&TAG_INFO) {
+    fn update_app(&mut self, app_name: &String, latest_tag_info: &TAG_INFO) {
+        // Create mod folder if required.
+        let modpath_dir = &format!("{}/{}", self.config.get_db_location(), app_name);
+
+        let mut is_dir:bool=Path::new(modpath_dir).is_dir();
+
+        match is_dir {
+            true => {}
+            false => {
+                if let Err(e) = create_dir_all(modpath_dir) {
+                    println!("Error: {}", e);
+                    println!("Error creating dir.\nExiting...");
+                    exit(1);
+                }
+                println!("Created directory for the mod {} located at '{}'", app_name, modpath_dir)
+            }
+        }
+
+
+        // Respective update
         match self.config.apps.get(app_name) {
-                Some(current_app) => {
-                    println!("{}", self.config.db_location);
-                    if current_app.tag_name == latest_tag_info.tag_name {
-                        println!("[✅] APP {} is up to date, skipping...",current_app.get_app_name());
-                    } else {
-                        println!("[⚠️] Updating '{}'",current_app.get_app_name());
-                        match current_app.app_type {
-                            APP_TYPE::Unknown | APP_TYPE::WakeupTool => {println!("App '{}' doesn't have a update procedure. Skipping", current_app.get_app_name())}
-                            APP_TYPE::HitboxOverlay => {
-                                download_hitbox_overlay(&self.config.get_db_location(), latest_tag_info);
-                            }
+            Some(current_app) => {
+                if current_app.tag_name == latest_tag_info.tag_name.to_string() {
+                    println!("[✅] APP {} is up to date, skipping...",current_app.get_app_name());
+                } else {
+                    println!("[⚠️] Updating '{}'",current_app.get_app_name());
+                    match current_app.app_type {
+                        APP_TYPE::Unknown | APP_TYPE::WakeupTool => {println!("App '{}' doesn't have a update procedure. Skipping", current_app.get_app_name())}
+                        APP_TYPE::HitboxOverlay => {
+                            download_hitbox_overlay(modpath_dir, latest_tag_info);
                         }
                     }
                 }
-                None => {
-                    println!("App '{}' not found. Skipping for tag with url '{}'", app_name, latest_tag_info.html_url);
-                }
             }
+            None => {
+                println!("App '{}' not found. Skipping for tag with url '{}'", app_name, latest_tag_info.html_url);
+            }
+        }
+
+
+        // Update app ionfo
+        let mut app_to_update = self.config.apps.get_mut(app_name).unwrap();
+        app_to_update.tag_name = latest_tag_info.tag_name.to_string();
+        app_to_update.published_at = latest_tag_info.published_at.to_string();
+        app_to_update.url_source_version = latest_tag_info.html_url.to_string();
+        app_to_update.id = latest_tag_info.id;
+
     }
+
+
+
 
     fn update_all(&mut self){
         let tags_hashmap: HashMap<String, TAG_INFO> = self.get_latest_tags_hash_map();
@@ -434,75 +463,24 @@ impl Manager {
             }
         }
 
-        for (app_name,latest_tag_info) in &tags_hashmap {
-            self.update_app(app_name, latest_tag_info);
+        let ans = Confirm::new("Do you wish to update to the latest version?").
+            with_default(false).
+            with_help_message("This will update all the mentioned apps").
+            prompt();
+
+        match ans {
+            Ok(true) => {
+                for (app_name,latest_tag_info) in &tags_hashmap {
+                    self.update_app(app_name, latest_tag_info);
+                }
+            },
+            Ok(false) => println!("That's too bad, I've heard great things about it."),
+            Err(_) => println!("Error with the input."),
         }
-        //     // println!("> {:#?}",app_name);
-        //     // println!(">> {:#?}",tag_info);
-        //     // let target_app = s elf.config.get_app_from_appname(app_name.to_string());
-        //     // for app in &self.config.apps{
-        //     //     if app.get_app_name() == app_name.to_string() {
-        //     //         self.update_app(app,tag_info);
-        //     //     }
-        //     //     else { continue }
-        //     // }
-        //
-        //     // match target_app {
-        //     //     Ok(appstruct)  => {
-        //     //         println!("{:#?}", appstruct);
-        //     //         self.update_app(appstruct,tag_info);
-        //     //     }
-        //     //     Err(false)|Err(true) => {
-        //     //         println!("App '{}' not found. Skipping for tag with url '{}'",app_name,tag_info.html_url);
-        //     //     }
-        //     // }
-        // }
 
 
-        // for mut app in &mut self.config.apps {
-        //     app.tag_name="NEW".to_string();
-        // }
-        // let latest_tags_hashmap: HashMap<String, &TAG_INFO> = self.get_latest_tags_hash_map();
 
-        // for (app_name,TAG_INFO) in latest_tags_hashmap {
-        //
-        //     // // find the app that matches the tag
-        //     // let target_app: AppStruct;
-        //     // for app in self.config.apps {
-        //     //     match (app.repo_owner,app.repo_name) {
-        //     //          // => {}
-        //     //         (_, _) => {continue}
-        //     //     }
-        //     // }
-        // }
 
-            // if app.tag_name == latest_tag.tag_name && app.published_at == latest_tag.published_at{
-            //     println!(" [✅] Latest tag already in use.");
-            // } else {
-            //     println!(" [⚠️] Differences have been found!");
-            //
-            //     println!("\tCurrent tag:");
-            //     println!("\t  Name: '{}'",app.tag_name);
-            //     println!("\t  Published date: '{}'",app.published_at);
-            //
-            //     println!("\tLatest tag:");
-            //     println!("\t  Name: '{}'",latest_tag.tag_name);
-            //     println!("\t  Published date: '{}'",latest_tag.published_at);
-            //     let ans = Confirm::new("Do you wish to update to the latest version?")
-            //         .with_default(false)
-            //         .prompt();
-            //     // .with_help_message("This data is stored for good reasons")
-            //
-            //     match ans {
-            //         Ok(true) => {
-            //             app.update_app(&format!("{}/{}",config.mods_folder_path,app.app_name),latest_tag);
-            //             // config.app_db.save_db_config()
-            //         },
-            //         Ok(false) => println!("That's too bad, I've heard great things about it."),
-            //         Err(_) => println!("Error with the input."),
-            //     }
-            // }
-        // }
     }
 }
 
@@ -516,18 +494,18 @@ fn main() {
 
     manager.config.set_default_apps();
 
-    println!("{:#?}",manager.config);
-    println!("{:#?}",manager.config.get_db_location());
+    // println!("{:#?}",manager.config);
+    // println!("{:#?}",manager.config.get_db_location());
 
     for app in &manager.config.apps {
-        println!("{:#?}",app);
+        println!("{:?}",app);
     }
 
     manager.update_all();
 
     println!("EOF apps print"); // TODO REMOVE VISUAL PRINT
     for app in &manager.config.apps {
-        println!("{:#?}",app);
+        println!("{:?}",app);
     }
 
     // // let mut config = OLD_CONFIG {
@@ -630,6 +608,7 @@ fn download_hitbox_overlay(destination_path: &String, tag_info: &TAG_INFO) {
     };
 
     // Identify assets
+    // TODO FIX
     for asset in &tag_info.assets {
         match asset.name.as_str() {
             "ggxrd_hitbox_overlay.zip" => {ggxrd_hitbox_overlay_zip = asset;}
