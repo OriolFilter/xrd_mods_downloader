@@ -146,7 +146,7 @@ impl AppStruct {
         }
     }
 
-    fn patch_app(&self,xrd_game_folder: &String,downloads_mod_path: &String, tag_info: &TAG_INFO){
+    fn patch_app(&mut self, xrd_game_folder: &String,downloads_mod_path: &String, tag_info: &TAG_INFO){
         let mut files_to_move_whitelist:Vec<String> = vec![];
 
         match self.app_type {
@@ -440,14 +440,70 @@ impl Config {
         format!("{}/{}", self.get_db_dir_path(), "db.json")
     }
 
-    fn get_xrd_game_folder(&mut self) -> String{
+    fn get_xrd_game_folder(&mut self) -> String {
         match self.xrd_game_folder.is_empty() {
-            false => {self.xrd_game_folder.to_string()},
+            false => {}, // if self.xrd_game_folder is set, it will be returned at the end.
             true => {
-                "/tmp/xrd_game".to_string()
+                let mut file_path = "";
+
+                if cfg!(windows) {
+                    println!("Windows is not supported");
+                    exit(1);
+                }
+                else if cfg!(unix) {
+                    file_path = "/home/????/.local/share/Steam/config/libraryfolders.vdf";
+
+                }
+                else {
+                    println!("Neither Linux or Windows detected, skipping tag.");
+                    exit(1);
+                }
+                self.xrd_game_folder = get_xrd_folder_from_file(file_path.to_string()).unwrap().to_string();
             }
         }
+        self.xrd_game_folder.to_string()
     }
+}
+
+fn get_xrd_folder_from_file (steam_vdf_file_path: String) -> std::io::Result<String>  {
+    let contents = fs::read_to_string(steam_vdf_file_path)?.replace("\t"," ");
+
+    let mut xrd_line: i32=-1;
+    let xrd_game_id_txt = "\"520440\"";
+
+    let mut file_lines = contents.lines();
+    let mut last_storage_path:String="".to_string();
+    let mut current_line_count = 0;
+    let mut current_line_string: String;
+
+    while xrd_line < 0 && current_line_count < contents.lines().count() {
+        current_line_string = file_lines.next().unwrap().to_string();
+
+
+        if current_line_string.contains(xrd_game_id_txt)  {
+            xrd_line = current_line_count as i32;
+        }
+
+        if current_line_string.contains("\"path\"") && xrd_line < 0 {
+            let mut tmp_path: String = current_line_string;
+            tmp_path = tmp_path.trim().to_string(); // remove extra spaces left right
+            tmp_path = tmp_path.strip_prefix("\"path\"").unwrap().to_string(); // Remove starter "path"
+            tmp_path = tmp_path.trim().to_string(); // Trim again
+            tmp_path = tmp_path.replace("\"",""); // Remove quotes
+            last_storage_path = tmp_path;
+        }
+
+        current_line_count +=1;
+    }
+
+    if xrd_line < 0 {
+        println!("Xrd not found, exitting...");
+        exit(1);
+    }
+
+
+    Ok(last_storage_path)
+
 }
 
 fn print_different_versions(current:&AppStruct,latest:&TAG_INFO) -> bool {
@@ -540,8 +596,10 @@ impl Manager {
             Some(current_app) => {
                 println!("[🚧️] Patching '{}'",current_app.get_app_name());
                 match current_app.app_type {
-                    APP_TYPE::HitboxOverlay | APP_TYPE::FasterLoadingTimes | APP_TYPE::WakeupTool | APP_TYPE::MirrorColorSelect | APP_TYPE::BackgroundGamepad => {
-                        current_app.patch_app(&self.config.get_xrd_game_folder(), modpath_dir, latest_tag_info);
+                    APP_TYPE::HitboxOverlay => {
+                        let xrd_folder: String = self.config.get_xrd_game_folder().to_string();
+                        current_app.patch_app(xrd_folder, modpath_dir, latest_tag_info);
+                        // println!("Xrd folder {}",xrd_folder);
                     }
                     _ => {println!("[🚫] App '{}' of type {:?} doesn't have a patch procedure. Skipping", current_app.get_app_name(),current_app.app_type)}
                 }
@@ -677,6 +735,7 @@ fn main() {
         Ok(_) => {println!("Config loaded correctly")}
         Err(e) => {println!("There was an error loading the config: {e}")}
     }
+    println!("Xrd folder {}",manager.config.get_xrd_game_folder());
 
     // println!("{:#?}",manager.config);
     // println!("{:#?}",manager.config.get_db_location());
