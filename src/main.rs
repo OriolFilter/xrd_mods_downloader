@@ -15,6 +15,7 @@ use std::time::Duration;
 use zip::ZipArchive;
 use std::env;
 use std::io::SeekFrom::Current;
+use std::ops::BitOr;
 use downloader::Verification::Failed;
 use futures::Stream;
 
@@ -73,6 +74,13 @@ struct AppStruct {
 impl AppStruct {
     fn get_app_name(&self) -> String {
         format!("{}/{}",self.repo_owner,self.repo_name).to_string()
+    }
+
+    fn get_repo_url(&self) -> String{
+        format!("https://github.com/{}/{}",self.repo_owner,self.repo_name).to_string()
+    }
+    fn get_api_repo_url(&self) -> String{
+        format!("https://api.github.com/repos/{}/{}",self.repo_owner,self.repo_name).to_string()
     }
 
     fn download_mod(&self,destination_dir: &String, tag_info: &TAG_INFO) {
@@ -136,9 +144,6 @@ impl AppStruct {
         }
     }
 
-}
-
-impl AppStruct {
     #[tokio::main]
     async fn get_latest_tag(&self) -> Result<TAG_INFO, reqwest::Error> {
         // ➜  ~ curl -L \
@@ -181,12 +186,6 @@ impl AppStruct {
         Ok(tag_info)
     }
 
-    fn get_repo_url(&self) -> String{
-        format!("https://github.com/{}/{}",self.repo_owner,self.repo_name).to_string()
-    }
-    fn get_api_repo_url(&self) -> String{
-        format!("https://api.github.com/repos/{}/{}",self.repo_owner,self.repo_name).to_string()
-    }
 }
 
 // struct APP_VECTOR {
@@ -416,7 +415,7 @@ impl Config {
 
 
     }
-    fn get_db_path(&mut self) -> String {
+    fn get_db_file_path(&mut self) -> String {
         format!("{}/{}", self.get_db_dir_path(), "db.json")
     }
     // fn get_apps_hashmap(&self) -> HashMap<String,&AppStruct>{
@@ -439,11 +438,14 @@ impl Config {
     // }
 }
 
-fn print_different_versions(current:&AppStruct,latest:&TAG_INFO) {
+fn print_different_versions(current:&AppStruct,latest:&TAG_INFO) -> bool {
+    // for convenience returns true if a new version is fouund.
+
     println!("Checking updates for app: {}",current.get_app_name());
 
-    if current.tag_name == latest.tag_name {
+    if current.tag_name == latest.tag_name && current.published_at == latest.published_at {
         println!("[✅ ] APP {} is up to date!",current.get_app_name());
+        return false
     } else {
         println!("[⚠️] APP {} has a new version detected.",current.get_app_name());
 
@@ -456,6 +458,7 @@ fn print_different_versions(current:&AppStruct,latest:&TAG_INFO) {
         // Print notes
         println!("Version notes:\n============\n{}\n============",latest.body.replace("\\n","\n").replace("\\r",""));
     }
+    true
 }
 
 
@@ -463,16 +466,36 @@ fn print_different_versions(current:&AppStruct,latest:&TAG_INFO) {
 struct Manager {
     config: Config
 }
-impl Manager {
-    fn load_config(&self){
-        // TODO
 
+impl Manager {
+    fn load_config(&mut self) -> std::io::Result<()> {
+        // load config from db.json.
+        // otherwise load default config.
+
+        let mut is_present:bool=Path::new(&self.config.get_db_file_path()).exists();
+
+        match is_present {
+            false => {
+                println!("DB not found. Loading defaults.");
+                self.config.set_default_apps();
+            }
+            _ => {
+                let mut file = File::open(self.config.get_db_file_path())?; // Open file
+                let mut contents = String::new();
+                file.read_to_string(&mut contents)?;
+                self.config = serde_json::from_str(&contents)?;
+            }
+        }
+
+        Ok(())
     }
+
     fn save_config(&mut self) -> std::io::Result<()>  {
+        println!("WHO IS SAVING THE CONF");
         // &self.recreate_config();
         // let config_string = serde_json::to_string(&self.apps)?;
 
-        let mut file = File::create(self.config.get_db_path())?;
+        let mut file = File::create(self.config.get_db_file_path())?;
 
         let config_string = serde_json::to_string(&self.config)?;
         file.write_all(config_string.as_bytes())?;
@@ -552,11 +575,15 @@ impl Manager {
 
     fn update_all(&mut self){
         let tags_hashmap: HashMap<String, TAG_INFO> = self.get_latest_tags_hash_map();
+        let mut new_verison_found_bool: bool = false;
 
         for (app_name,latest_tag_info) in &tags_hashmap {
             match self.config.apps.get(app_name) {
                 Some(current_app)  => {
-                    print_different_versions(current_app,latest_tag_info);
+                    if new_verison_found_bool.bitor(print_different_versions(current_app,latest_tag_info)) {
+                        new_verison_found_bool=true
+                    }
+
                 }
                 None => {
                     println!("App '{}' not found. Skipping for tag with url '{}'",app_name,latest_tag_info.html_url);
@@ -564,27 +591,32 @@ impl Manager {
             }
         }
 
-        let ans = Confirm::new("Do you wish to update to the latest version?").
-            with_default(false).
-            with_help_message("This will update all the mentioned apps").
-            prompt();
-
-        match ans {
-            Ok(true) => {
-                for (app_name,latest_tag_info) in &tags_hashmap {
-                    self.update_app(app_name, latest_tag_info);
-                }
-            },
-            Ok(false) => println!("That's too bad, I've heard great things about it."),
-            Err(_) => println!("Error with the input."),
+        if !new_verison_found_bool {
+            println!("No new versions found. Exiting...");
         }
+        else {
 
-        match self.save_config(){
-            Ok(_) => {
-                println!("Successfully saved the configuration.")
-            }
-            Err(e) => {
-                println!("Error Saving the configuration: '{}'",e)
+            let ans = Confirm::new("Do you wish to update to the latest version?").
+                with_default(false).
+                with_help_message("This will update all the mentioned apps").
+                prompt();
+
+            match ans {
+                Ok(true) => {
+                    for (app_name,latest_tag_info) in &tags_hashmap {
+                        self.update_app(app_name, latest_tag_info);
+                    }
+                    match self.save_config(){
+                        Ok(_) => {
+                            println!("Successfully saved the configuration.")
+                        }
+                        Err(e) => {
+                            println!("Error Saving the configuration: '{}'",e)
+                        }
+                    }
+                },
+                Ok(false) => println!("That's too bad, I've heard great things about it."),
+                Err(_) => println!("Error with the input."),
             }
         }
     }
@@ -595,9 +627,11 @@ fn main() {
         config: Config{ apps: HashMap::new() }
     };
 
-    manager.load_config();
 
-    manager.config.set_default_apps();
+    match manager.load_config() {
+        Ok(_) => {println!("Config loaded correctly")}
+        Err(e) => {println!("There was an error loading the config: {e}")}
+    }
 
     // println!("{:#?}",manager.config);
     // println!("{:#?}",manager.config.get_db_location());
@@ -614,63 +648,6 @@ fn main() {
     // }
 }
 
-
-//
-// fn check_app_updates(config: OLD_CONFIG){
-//     for mut app in config.app_db.apps {
-//         println!("Checking updates for app {}",app.url);
-//         let result = app.get_latest_tag();
-//
-//         if let Err(e) = result {
-//             println!("Error: {}", e);
-//             exit(1);
-//         }
-//         let latest_tag: TAG_INFO = result.unwrap();
-//         // println!("{:#?}", latest_tag);
-//
-//         if app.tag_name == latest_tag.tag_name && app.published_at == latest_tag.published_at{
-//             println!(" [✅ ] Latest tag already in use.");
-//         } else {
-//             println!(" [⚠️] Differences have been found!");
-//
-//             println!("\tCurrent tag:");
-//             println!("\t  Name: '{}'",app.tag_name);
-//             println!("\t  Published date: '{}'",app.published_at);
-//
-//             println!("\tLatest tag:");
-//             println!("\t  Name: '{}'",latest_tag.tag_name);
-//             println!("\t  Published date: '{}'",latest_tag.published_at);
-//             let ans = Confirm::new("Do you wish to update to the latest version?")
-//                 .with_default(false)
-//                 .prompt();
-//                 // .with_help_message("This data is stored for good reasons")
-//
-//             match ans {
-//                 Ok(true) => {
-//                     app.update_app(&format!("{}/{}",config.mods_folder_path,app.get_app_name()),latest_tag);
-//                     // config.app_db.save_db_config()
-//                 },
-//                 Ok(false) => println!("That's too bad, I've heard great things about it."),
-//                 Err(_) => println!("Error with the input."),
-//             }
-//         }
-//     }
-// }
-
-// fn load_apps(config: &mut OLD_CONFIG) -> std::io::Result<()> {
-//     // let mut file = File::open(config.get_db_path())?;
-//     // let mut contents = String::new();
-//     // file.read_to_string(&mut contents)?;
-//     //
-//     // config.app_db.apps = serde_json::from_str(&contents).unwrap();
-//
-//     Ok(())
-// }
-
-// fn load_db(config: &CONFIG){
-//     check_db_exists(config.db_path(),true);
-//     return;
-// }
 
 fn download_file_to_path(file_url: String, destination_dir: String){
     // Download overlay.zip
@@ -716,6 +693,8 @@ fn download_file_to_path(file_url: String, destination_dir: String){
 }
 
 fn unzip_file(zip_file_path: String, unzip_dir:String){
+    // this was a copy pasta from somewhere
+
     let zipfile = std::fs::File::open(&zip_file_path).unwrap();
 
     let mut archive = zip::ZipArchive::new(zipfile).unwrap();
