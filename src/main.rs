@@ -15,6 +15,7 @@ use std::time::Duration;
 use zip::ZipArchive;
 use std::env;
 use std::io::SeekFrom::Current;
+use downloader::Verification::Failed;
 use futures::Stream;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -328,6 +329,15 @@ impl Config {
 
         apps_hashmap
     }
+    fn get_app_from_appname(&self, app_name: String) -> Result<&AppStruct, bool> {
+        for app in &self.apps{
+            if app.get_app_name() == app_name {
+                return Ok(app);
+            }
+            else { continue }
+        }
+        Err(true)
+    }
 }
 
 fn print_different_versions(current:&AppStruct,latest:&TAG_INFO) {
@@ -384,23 +394,23 @@ impl Manager {
 
     fn update_app(mut self, current:&AppStruct, latest:&TAG_INFO) {
         let updated: bool = false;
-        if current.tag_name == latest.tag_name {
-            println!("[✅] APP {} is up to date, skipping...",current.get_app_name());
-        } else {
-            println!("[⚠️] Updating '{}'",current.get_app_name());
-            match current.app_type {
-                APP_TYPE::Unknown | APP_TYPE::WakeupTool => {println!("App '{}' doesn't have a update procedure. Skipping", current.get_app_name())}
-                APP_TYPE::HitboxOverlay => {
-                    download_hitbox_overlay(&self.config.get_db_location(), latest);
-                }
-            }
-        }
+        // if current.tag_name == latest.tag_name {
+        //     println!("[✅] APP {} is up to date, skipping...",current.get_app_name());
+        // } else {
+        //     println!("[⚠️] Updating '{}'",current.get_app_name());
+        //     match current.app_type {
+        //         APP_TYPE::Unknown | APP_TYPE::WakeupTool => {println!("App '{}' doesn't have a update procedure. Skipping", current.get_app_name())}
+        //         APP_TYPE::HitboxOverlay => {
+        //             download_hitbox_overlay(&self.config.get_db_location(), latest);
+        //         }
+        //     }
+        // }
     }
 
     fn update_all(&mut self){
         // Get ALL tags -> then compare -> prompt
-        let apps_hashmap: HashMap<String, &AppStruct> = self.config.get_apps_hashmap();
         let tags_hashmap: HashMap<String, TAG_INFO> = self.get_latest_tags_hash_map();
+        // let apps_hashmap: HashMap<String, &AppStruct> = self.config.get_apps_hashmap();
 
         // println!("{:#?}",apps_hashmap);
         //
@@ -418,15 +428,23 @@ impl Manager {
         println!("Updating all the apps:");
         for (app_name,tag_info) in &tags_hashmap {
             println!("{:#?}",app_name);
-            match apps_hashmap.get(app_name) {
-                Some(appstruct)  => {
-                    println!("{:#?}", appstruct);
-                    // self.update_app(appstruct,tag_info);
-                }
-                None => {
-                    println!("App '{}' not found. Skipping for tag with url '{}'",app_name,tag_info.html_url);
-                }
-            }
+            // let target_app = self.config.get_app_from_appname(app_name.to_string());
+            // for app in &self.config.apps{
+            //     if app.get_app_name() == app_name.to_string() {
+            //         self.update_app(app,tag_info);
+            //     }
+            //     else { continue }
+            // }
+
+            // match target_app {
+            //     Ok(appstruct)  => {
+            //         println!("{:#?}", appstruct);
+            //         self.update_app(appstruct,tag_info);
+            //     }
+            //     Err(false)|Err(true) => {
+            //         println!("App '{}' not found. Skipping for tag with url '{}'",app_name,tag_info.html_url);
+            //     }
+            // }
         }
 
 
