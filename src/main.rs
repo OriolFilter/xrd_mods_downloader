@@ -171,123 +171,125 @@ impl AppStruct {
 // struct APP_VECTOR {
 //     vec: Vec<APP>
 // }
+//
+// #[derive(Serialize, Deserialize, Debug)]
+// struct APP_DB {
+//     apps: HashMap<String,AppStruct>,
+//     #[serde(default)]
+//     db_location: String
+// }
+//
+// impl APP_DB {
+//     fn init_default_apps_config(&mut self) {
+//         let mut new_app_hashmap: HashMap<String,AppStruct> = HashMap::new();
+//         let default_repos_list = vec![
+//             "https://api.github.com/repos/kkots/ggxrd_hitbox_overlay_2211".to_string(),
+//         ];
+//
+//         for repository_url in default_repos_list {
+//             let app = AppStruct {
+//                 repo_owner: "".to_string(),
+//                 repo_name: "".to_string(),
+//                 url: repository_url.to_string(),
+//                 id: 0,
+//                 tag_name: "".to_string(),
+//                 published_at: "".to_string(),
+//                 app_type: Default::default(),
+//                 url_source_version: "".to_string(),
+//             };
+//             new_app_hashmap.insert(app.get_app_name(),app);
+//         }
+//         self.apps = new_app_hashmap;
+//     }
+//
+//     fn create_new_db(&mut self, file_path: String) -> std::io::Result<()> {
+//         // println!("Creating db in '{}'", file_path);
+//         // // let file = File::create(file_path)?; //create empty file
+//         // // drop(file);
+//         // &self.init_default_apps_config();
+//         // println!("{:#?}",self);
+//         // self.save_db_config()?;
+//         // // let config_string = serde_json::to_string(&self.apps)?;
+//         //
+//         // // file.write_all(config_string.as_bytes())?;
+//         Ok(())
+//     }
+//
+//     fn save_db_config(&mut self) -> std::io::Result<()>  {
+//         // // &self.recreate_config();
+//         // // let config_string = serde_json::to_string(&self.apps)?;
+//         //
+//         // let mut file = File::create(&self.db_location)?;
+//         //
+//         // &self.init_default_apps_config();
+//         // let config_string = serde_json::to_string(&self.apps)?;
+//         // println!("{:#?}",config_string);
+//         // println!("!!");
+//         // file.write_all(config_string.as_bytes())?;
+//         Ok(())
+//
+//     }
+//
+//     fn replace_old_tag(mut self, old_app: AppStruct, tag_info: TAG_INFO){
+//         // self = tag_info;
+//
+//     }
+// }
 
-#[derive(Serialize, Deserialize, Debug)]
-struct APP_DB {
-    apps: Vec<AppStruct>,
-    #[serde(default)]
-    db_location: String
-}
-
-impl APP_DB {
-    fn init_default_apps_config(&mut self) {
-        let mut new_app_vector: Vec<AppStruct> = vec![];
-        let default_repos_list = vec![
-            "https://api.github.com/repos/kkots/ggxrd_hitbox_overlay_2211".to_string(),
-        ];
-
-        for repository_url in default_repos_list {
-            new_app_vector.push(AppStruct {
-                repo_owner: "".to_string(),
-                repo_name: "".to_string(),
-                url: repository_url.to_string(),
-                id: 0,
-                tag_name: "".to_string(),
-                published_at: "".to_string(),
-                app_type: Default::default(),
-                url_source_version: "".to_string(),
-            })
-        }
-        self.apps = new_app_vector;
-    }
-
-    fn create_new_db(&mut self, file_path: String) -> std::io::Result<()> {
-        // println!("Creating db in '{}'", file_path);
-        // // let file = File::create(file_path)?; //create empty file
-        // // drop(file);
-        // &self.init_default_apps_config();
-        // println!("{:#?}",self);
-        // self.save_db_config()?;
-        // // let config_string = serde_json::to_string(&self.apps)?;
-        //
-        // // file.write_all(config_string.as_bytes())?;
-        Ok(())
-    }
-
-    fn save_db_config(&mut self) -> std::io::Result<()>  {
-        // // &self.recreate_config();
-        // // let config_string = serde_json::to_string(&self.apps)?;
-        //
-        // let mut file = File::create(&self.db_location)?;
-        //
-        // &self.init_default_apps_config();
-        // let config_string = serde_json::to_string(&self.apps)?;
-        // println!("{:#?}",config_string);
-        // println!("!!");
-        // file.write_all(config_string.as_bytes())?;
-        Ok(())
-
-    }
-
-    fn replace_old_tag(mut self, old_app: AppStruct, tag_info: TAG_INFO){
-        // self = tag_info;
-
-    }
-}
-
-
-struct OLD_CONFIG {
-    mods_folder_path: String,
-    _db_file_name: String,
-    app_db: APP_DB
-}
-
-impl OLD_CONFIG {
-    fn get_db_path(&self) -> String {
-        format!("{}/{}", self.mods_folder_path, self._db_file_name)
-    }
-
-    fn check_db_exists(&mut self, create_db: bool) -> bool {
-        let mut is_present:bool=false;
-        is_present = Path::new(&self.get_db_path()).exists();
-
-        match (is_present,create_db) {
-            (true,false) | (true, true) => {
-                println!("DB found");
-            }
-            (false,true) => {
-                println!("DB not found");
-                if let Err(e) = self.app_db.create_new_db(self.get_db_path()) {
-                    println!("Error: {}", e);
-                    println!("Error creating file.\nExiting...");
-                    exit(1);
-                }
-                println!("New DB created");
-            }
-            _ => {}
-        }
-
-        is_present
-    }
-    fn init(&mut self){
-        self.app_db.db_location=self.get_db_path()
-    }
-}
+//
+// struct OLD_CONFIG {
+//     mods_folder_path: String,
+//     _db_file_name: String,
+//     app_db: APP_DB
+// }
+//
+// impl OLD_CONFIG {
+//     fn get_db_path(&self) -> String {
+//         format!("{}/{}", self.mods_folder_path, self._db_file_name)
+//     }
+//
+//     fn check_db_exists(&mut self, create_db: bool) -> bool {
+//         let mut is_present:bool=false;
+//         is_present = Path::new(&self.get_db_path()).exists();
+//
+//         match (is_present,create_db) {
+//             (true,false) | (true, true) => {
+//                 println!("DB found");
+//             }
+//             (false,true) => {
+//                 println!("DB not found");
+//                 if let Err(e) = self.app_db.create_new_db(self.get_db_path()) {
+//                     println!("Error: {}", e);
+//                     println!("Error creating file.\nExiting...");
+//                     exit(1);
+//                 }
+//                 println!("New DB created");
+//             }
+//             _ => {}
+//         }
+//
+//         is_present
+//     }
+//     fn init(&mut self){
+//         self.app_db.db_location=self.get_db_path()
+//     }
+// }
 
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Config {
     #[serde(default)]
-    apps: Vec<AppStruct>,
+    apps: HashMap<String,AppStruct>,
     #[serde(default)]
     db_location: String
 }
 
 impl Config {
     fn set_default_apps (&mut self) {
-        let mut new_apps_vector: Vec<AppStruct> = vec![];
+        let mut new_app_hashmap: HashMap<String,AppStruct> = HashMap::new();
+        let mut holder_apps_vector: Vec<AppStruct> = vec![];
 
-        new_apps_vector.push(
+        holder_apps_vector.push(
             AppStruct{
                 repo_owner: "kkots".to_string(),
                 repo_name: "ggxrd_hitbox_overlay_2211".to_string(),
@@ -300,7 +302,11 @@ impl Config {
             }
         );
 
-        self.apps = new_apps_vector;
+        for app in holder_apps_vector {
+            new_app_hashmap.insert(app.get_app_name(),app);
+        }
+
+        self.apps = new_app_hashmap;
     }
 
     fn get_db_location (&mut self) -> String {
@@ -320,24 +326,24 @@ impl Config {
 
         self.db_location.to_string()
     }
-    fn get_apps_hashmap(&self) -> HashMap<String,&AppStruct>{
-        let mut apps_hashmap: HashMap<String,&AppStruct> = HashMap::new();
-
-        for app in &self.apps {
-            apps_hashmap.insert(app.get_app_name(),app);
-        }
-
-        apps_hashmap
-    }
-    fn get_app_from_appname(&self, app_name: String) -> Result<&AppStruct, bool> {
-        for app in &self.apps{
-            if app.get_app_name() == app_name {
-                return Ok(app);
-            }
-            else { continue }
-        }
-        Err(true)
-    }
+    // fn get_apps_hashmap(&self) -> HashMap<String,&AppStruct>{
+    //     let mut apps_hashmap: HashMap<String,&AppStruct> = HashMap::new();
+    //
+    //     for app in &self.apps {
+    //         apps_hashmap.insert(app.get_app_name(),app);
+    //     }
+    //
+    //     apps_hashmap
+    // }
+    // fn get_app_from_appname(&self, app_name: String) -> Result<&AppStruct, bool> {
+    //     for app in &self.apps{
+    //         if app.get_app_name() == app_name {
+    //             return Ok(app);
+    //         }
+    //         else { continue }
+    //     }
+    //     Err(true)
+    // }
 }
 
 fn print_different_versions(current:&AppStruct,latest:&TAG_INFO) {
@@ -376,14 +382,14 @@ impl Manager {
     fn get_latest_tags_hash_map(&self) -> HashMap<String, TAG_INFO> {
 
         let mut tags_hashmap:HashMap<String, TAG_INFO> =HashMap::new();
-        for app in &self.config.apps {
-            let result = app.get_latest_tag();
+        for (appname,appstruct) in &self.config.apps {
+            let result = appstruct.get_latest_tag();
             match result {
                 Ok(new_tag) => {
-                    tags_hashmap.insert(app.get_app_name(), new_tag);
+                    tags_hashmap.insert(appstruct.get_app_name(), new_tag);
                 }
                 Err(e) => {
-                    println!("Error getting tag for app '{}': << {} >>", app.get_app_name(), e);
+                    println!("Error getting tag for app '{}': << {} >>", appstruct.get_app_name(), e);
                     exit(1);
                 }
             }
@@ -425,10 +431,17 @@ impl Manager {
         //     }
         // }
 
+        // let target_app = self.config.get_app_from_appname(self.config.apps[0].get_app_name());
+        // println!("{:#?}", target_app);
+
+        println!("## {:#?}",self.config.apps);
+        println!("## {:#?}",tags_hashmap);
+
         println!("Updating all the apps:");
         for (app_name,tag_info) in &tags_hashmap {
-            println!("{:#?}",app_name);
-            // let target_app = self.config.get_app_from_appname(app_name.to_string());
+            println!("> {:#?}",app_name);
+            println!(">> {:#?}",tag_info);
+            // let target_app = s elf.config.get_app_from_appname(app_name.to_string());
             // for app in &self.config.apps{
             //     if app.get_app_name() == app_name.to_string() {
             //         self.update_app(app,tag_info);
@@ -498,7 +511,7 @@ impl Manager {
 fn main() {
 
     let mut manager = Manager {
-        config: Config{ apps: vec![], db_location: "/tmp/xrd_mods".to_string() }
+        config: Config{ apps: HashMap::new(), db_location: "/tmp/xrd_mods".to_string() }
     };
 
     manager.load_config();
@@ -593,15 +606,15 @@ fn main() {
 //     }
 // }
 
-fn load_apps(config: &mut OLD_CONFIG) -> std::io::Result<()> {
-    // let mut file = File::open(config.get_db_path())?;
-    // let mut contents = String::new();
-    // file.read_to_string(&mut contents)?;
-    //
-    // config.app_db.apps = serde_json::from_str(&contents).unwrap();
-
-    Ok(())
-}
+// fn load_apps(config: &mut OLD_CONFIG) -> std::io::Result<()> {
+//     // let mut file = File::open(config.get_db_path())?;
+//     // let mut contents = String::new();
+//     // file.read_to_string(&mut contents)?;
+//     //
+//     // config.app_db.apps = serde_json::from_str(&contents).unwrap();
+//
+//     Ok(())
+// }
 
 // fn load_db(config: &CONFIG){
 //     check_db_exists(config.db_path(),true);
