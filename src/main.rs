@@ -46,7 +46,8 @@ enum APP_TYPE {
     Unknown,
     HitboxOverlay,
     WakeupTool,
-    FasterLoadingTimes
+    FasterLoadingTimes,
+    MirrorColorSelect
 }
 
 
@@ -97,7 +98,11 @@ impl AppStruct {
                     println!("Neither Linux or Windows detected, skipping tag {}",tag_info.tag_name);
                 }
             }
-            _ => {}
+            APP_TYPE::MirrorColorSelect => {
+                assets_whitelist = vec!["GGXrdMirrorColorSelect.zip".to_string()];
+            }
+
+            APP_TYPE::Unknown | _ => {}
         }
 
         let mut matched_assets_list: Vec<&TAG_ASSETS> = vec![];
@@ -343,6 +348,19 @@ impl Config {
             }
         );
 
+        // Mirror Color Select kkots
+        holder_apps_vector.push(
+            AppStruct{
+                repo_owner: "kkots".to_string(),
+                repo_name: "GGXrdMirrorColorSelect".to_string(),
+                id: 0,
+                tag_name: "".to_string(),
+                published_at: "".to_string(),
+                app_type: APP_TYPE::MirrorColorSelect,
+                url_source_version: "".to_string(),
+            }
+        );
+
         for app in holder_apps_vector {
             new_app_hashmap.insert(app.get_app_name(),app);
         }
@@ -481,7 +499,7 @@ impl Manager {
                 } else {
                     println!("[⚠️] Updating '{}'",current_app.get_app_name());
                     match current_app.app_type {
-                        APP_TYPE::HitboxOverlay | APP_TYPE::FasterLoadingTimes | APP_TYPE::WakeupTool => {
+                        APP_TYPE::HitboxOverlay | APP_TYPE::FasterLoadingTimes | APP_TYPE::WakeupTool | APP_TYPE::MirrorColorSelect => {
                             current_app.download_mod(modpath_dir, latest_tag_info);
                         }
                         _ => {println!("[🚫] App '{}' of type {:?} doesn't have a update procedure. Skipping", current_app.get_app_name(),current_app.app_type)}
@@ -672,14 +690,13 @@ fn download_file_to_path(file_url: String, destination_dir: String){
 }
 
 fn unzip_file(zip_file_path: String, unzip_dir:String){
-    let zipfile = std::fs::File::open(zip_file_path).unwrap();
+    let zipfile = std::fs::File::open(&zip_file_path).unwrap();
 
     let mut archive = zip::ZipArchive::new(zipfile).unwrap();
 
     for i in 0..archive.len() {
         let mut file = archive.by_index(i).unwrap();
         let outpath = format!("{}/{}",unzip_dir,file.name());
-        println!("{:?}", outpath);
 
         {
             let comment = file.comment();
@@ -689,17 +706,14 @@ fn unzip_file(zip_file_path: String, unzip_dir:String){
         }
 
         if file.is_dir() {
-            println!("File {} extracted to \"{}\"", i, outpath);
+            // println!("File {} extracted to \"{}\"", i, outpath);
             fs::create_dir_all(&outpath).unwrap();
         } else {
-            println!(
-                "File {} extracted to \"{}\" ({} bytes)",
-                i,
-                outpath,
-                file.size()
-            );
+            // println!("File {} extracted to \"{}\" ({} bytes)",i,outpath,file.size());
             let mut outfile = fs::File::create(&outpath).unwrap();
             io::copy(&mut file, &mut outfile).unwrap();
         }
     }
+
+    println!("File '{}' extracted to '{}'",zip_file_path,unzip_dir);
 }
