@@ -415,7 +415,7 @@ impl Manager {
                     match current_app.app_type {
                         APP_TYPE::Unknown => {println!("[🚫] App '{}' doesn't have a update procedure. Skipping", current_app.get_app_name())}
                         APP_TYPE::WakeupTool => {
-                            download_hitbox_overlay(modpath_dir, latest_tag_info);
+                            download_wake_up_tool(modpath_dir, latest_tag_info);
                         }
                         APP_TYPE::HitboxOverlay => {
                             download_hitbox_overlay(modpath_dir, latest_tag_info);
@@ -609,19 +609,9 @@ fn download_file_to_path(file_url: String, destination_dir: String){
 
 
 fn download_hitbox_overlay(destination_dir: &String, tag_info: &TAG_INFO) {
-
     let assets_whitelist = vec!["ggxrd_hitbox_overlay.zip".to_string()];
 
     let mut matched_assets_list: Vec<&TAG_ASSETS> = vec![];
-
-    let mut ggxrd_hitbox_overlay_zip = &TAG_ASSETS {
-        id: 0,
-        name: "".to_string(),
-        content_type: "".to_string(),
-        state: "".to_string(),
-        size: 0,
-        browser_download_url: "".to_string(),
-    };
 
     // Identify assets
     // TODO FIX
@@ -638,29 +628,27 @@ fn download_hitbox_overlay(destination_dir: &String, tag_info: &TAG_INFO) {
     install_hitbox_overlay(destination_dir.to_string());
 }
 
-fn download_lquis_wake_up_tool(destination_path: &String, tag_info: &TAG_INFO) {
-    println!("TODO");
-    // let mut ggxrd_reversal_tool_zip= &TAG_ASSETS {
-    //     id: 0,
-    //     name: "".to_string(),
-    //     content_type: "".to_string(),
-    //     state: "".to_string(),
-    //     size: 0,
-    //     browser_download_url: "".to_string(),
-    // };
-    //
-    // // Identify assets
-    // // TODO FIX
-    // for asset in &tag_info.assets {
-    //     match asset.name.as_str() {
-    //         format!("GGXrdReversalTool{}.zip",) => {ggxrd_hitbox_overlay_zip = asset;}
-    //         _ => {}
-    //     }
-    // }
+fn download_wake_up_tool(destination_dir: &String, tag_info: &TAG_INFO) {
+    let assets_whitelist = vec![
+        format!("GGXrdReversalTool.{}.zip",tag_info.tag_name), // Iquis
+        format!("GGXrdReversalTool-{}.zip",tag_info.tag_name) // Kkots
+    ];
 
+    let mut matched_assets_list: Vec<&TAG_ASSETS> = vec![];
 
+    // Identify assets
+    // TODO FIX
+    for asset in &tag_info.assets {
+        if assets_whitelist.contains(&asset.name) {
+            matched_assets_list.push(asset);
+        }
+    }
 
-    // install_hitbox_overlay(destination_path.to_string());
+    for matched_asset in matched_assets_list {
+        download_file_to_path(matched_asset.browser_download_url.to_string(), destination_dir.to_string())
+    }
+
+    // install_hitbox_overlay(destination_dir.to_string());
 }
 
 fn install_hitbox_overlay(download_path: String){
