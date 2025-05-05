@@ -54,7 +54,6 @@ enum APP_TYPE {
     BackgroundGamepad
 }
 
-
 #[derive(Serialize, Deserialize, Debug)]
 struct AppStruct {
     repo_owner: String,
@@ -153,22 +152,19 @@ impl AppStruct {
 
     fn patch_app(&self, xrd_game_folder: String, downloaded_mod_folder: &String) -> io::Result<()> {
         let xrd_binaries_folder_path = format!("{}/Binaries/Win32", xrd_game_folder);
-        // let mut files_to_copy_and_remove:Vec<String> = vec![]; // files to copy and later can be removed
         let mut files_to_copy:Vec<String> = vec![]; // files to only copy
-        let mut file_to_execute:String = String::new(); // file to copy, execute, and delete.
+        let mut file_to_execute:String = String::new(); // file to execute. Copy skipped
 
         // prepare patch
         match self.app_type {
             APP_TYPE::HitboxOverlay => {
-                // files_to_copy_and_remove = vec![
-                // ];
-
                 files_to_copy = vec![
                     // "ggxrd_hitbox_overlay.ini".to_string(), // this file will be created automatically
                     "ggxrd_hitbox_overlay.dll".to_string(),
                 ];
 
-                file_to_execute = "ggxrd_hitbox_patcher_linux".to_string();
+                if cfg!(windows){ file_to_execute = "ggxrd_hitbox_patcher.exe".to_string();}
+                else if cfg!(unix) {file_to_execute = "ggxrd_hitbox_patcher_linux".to_string();}
 
             }
             APP_TYPE::Unknown | _ => {}
@@ -207,7 +203,6 @@ impl AppStruct {
             }
 
             else if cfg!(unix) {
-                println!("!!");
                 let mut child = Command::new(executable_filepath.to_string())
                     .stdin(Stdio::piped())
                     .spawn()?;
