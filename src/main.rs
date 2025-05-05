@@ -303,79 +303,81 @@ impl Config {
         let mut new_app_hashmap: HashMap<String,AppStruct> = HashMap::new();
         let mut holder_apps_vector: Vec<AppStruct> = vec![];
 
-        // // Hitbox Overlay
-        // holder_apps_vector.push(
-        //     AppStruct{
-        //         repo_owner: "kkots".to_string(),
-        //         repo_name: "ggxrd_hitbox_overlay_2211".to_string(),
-        //         id: 0,
-        //         tag_name: "".to_string(),
-        //         published_at: "".to_string(),
-        //         app_type: APP_TYPE::HitboxOverlay,
-        //         url_source_version: "".to_string(),
-        //         automatically_patch: false,
-        //         patched: false,
-        //     }
-        // );
-        //
-        // // Wake up tool Iquis
-        // holder_apps_vector.push(
-        //     AppStruct{
-        //         repo_owner: "Iquis".to_string(),
-        //         repo_name: "rev2-wakeup-tool".to_string(),
-        //         id: 0,
-        //         tag_name: "".to_string(),
-        //         published_at: "".to_string(),
-        //         app_type: APP_TYPE::WakeupTool,
-        //         url_source_version: "".to_string(),
-        //         automatically_patch: false,
-        //     }
-        // );
-        //
-        // // Wake up tool kkots
-        // holder_apps_vector.push(
-        //     AppStruct{
-        //         repo_owner: "kkots".to_string(),
-        //         repo_name: "rev2-wakeup-tool".to_string(),
-        //         id: 0,
-        //         tag_name: "".to_string(),
-        //         published_at: "".to_string(),
-        //         app_type: APP_TYPE::WakeupTool,
-        //         url_source_version: "".to_string(),
-        //         automatically_patch: false,
-        //     }
-        // );
-        //
-        // // Faster Loading Times kkots
-        // holder_apps_vector.push(
-        //     AppStruct{
-        //         repo_owner: "kkots".to_string(),
-        //         repo_name: "GGXrdFasterLoadingTimes".to_string(),
-        //         id: 0,
-        //         tag_name: "".to_string(),
-        //         published_at: "".to_string(),
-        //         app_type: APP_TYPE::FasterLoadingTimes,
-        //         url_source_version: "".to_string(),
-        //         automatically_patch: false,
-        //         patched: false,
-        //     }
-        // );
-        // 
-        // // Mirror Color Select kkots
-        // holder_apps_vector.push(
-        //     AppStruct{
-        //         repo_owner: "kkots".to_string(),
-        //         repo_name: "GGXrdMirrorColorSelect".to_string(),
-        //         id: 0,
-        //         tag_name: "".to_string(),
-        //         published_at: "".to_string(),
-        //         app_type: APP_TYPE::MirrorColorSelect,
-        //         url_source_version: "".to_string(),
-        //         automatically_patch: false,
-        //         patched: false,
-        //     }
-        // );
-        //
+        // Hitbox Overlay
+        holder_apps_vector.push(
+            AppStruct{
+                repo_owner: "kkots".to_string(),
+                repo_name: "ggxrd_hitbox_overlay_2211".to_string(),
+                id: 0,
+                tag_name: "".to_string(),
+                published_at: "".to_string(),
+                app_type: APP_TYPE::HitboxOverlay,
+                url_source_version: "".to_string(),
+                automatically_patch: false,
+                patched: false,
+            }
+        );
+        
+        // Wake up tool Iquis
+        holder_apps_vector.push(
+            AppStruct{
+                repo_owner: "Iquis".to_string(),
+                repo_name: "rev2-wakeup-tool".to_string(),
+                id: 0,
+                tag_name: "".to_string(),
+                published_at: "".to_string(),
+                app_type: APP_TYPE::WakeupTool,
+                url_source_version: "".to_string(),
+                automatically_patch: false,
+                patched: false,
+            }
+        );
+        
+        // Wake up tool kkots
+        holder_apps_vector.push(
+            AppStruct{
+                repo_owner: "kkots".to_string(),
+                repo_name: "rev2-wakeup-tool".to_string(),
+                id: 0,
+                tag_name: "".to_string(),
+                published_at: "".to_string(),
+                app_type: APP_TYPE::WakeupTool,
+                url_source_version: "".to_string(),
+                automatically_patch: false,
+                patched: false,
+            }
+        );
+        
+        // Faster Loading Times kkots
+        holder_apps_vector.push(
+            AppStruct{
+                repo_owner: "kkots".to_string(),
+                repo_name: "GGXrdFasterLoadingTimes".to_string(),
+                id: 0,
+                tag_name: "".to_string(),
+                published_at: "".to_string(),
+                app_type: APP_TYPE::FasterLoadingTimes,
+                url_source_version: "".to_string(),
+                automatically_patch: false,
+                patched: false,
+            }
+        );
+        
+        // Mirror Color Select kkots
+        holder_apps_vector.push(
+            AppStruct{
+                repo_owner: "kkots".to_string(),
+                repo_name: "GGXrdMirrorColorSelect".to_string(),
+                id: 0,
+                tag_name: "".to_string(),
+                published_at: "".to_string(),
+                app_type: APP_TYPE::MirrorColorSelect,
+                url_source_version: "".to_string(),
+                automatically_patch: false,
+                patched: false,
+            }
+        );
+        
         // Background Gamepad kkots
         holder_apps_vector.push(
             AppStruct{
@@ -386,7 +388,7 @@ impl Config {
                 published_at: "".to_string(),
                 app_type: APP_TYPE::BackgroundGamepad,
                 url_source_version: "".to_string(),
-                automatically_patch: true,
+                automatically_patch: false,
                 patched: false,
             }
         );
