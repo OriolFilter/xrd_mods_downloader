@@ -251,8 +251,6 @@ impl AppStruct {
         //     }
         // }
 
-        // exit(1234);
-        println!(">:) bye");
         Ok(())
     }
 
@@ -275,7 +273,6 @@ impl AppStruct {
         let response = client.unwrap().get(&repo_url_latest).headers(headers).send().await?;
         let response_status = response.status();
         let mut tag_info: TAG_INFO = TAG_INFO {
-            // url: "".to_string(),
             html_url: "".to_string(),
             id: 0,
             tag_name: "".to_string(),
@@ -425,8 +422,6 @@ impl Config {
                 }
             }
         }
-
-
     }
     fn get_db_file_path(&mut self) -> String {
         format!("{}/{}", self.get_db_dir_path(), "db.json")
@@ -441,7 +436,7 @@ impl Config {
                 exit(1);
             }
             else if cfg!(unix) {
-                file_path = "/home/????/.local/share/Steam/config/libraryfolders.vdf";
+                file_path = "/home/goblin/.local/share/Steam/config/libraryfolders.vdf";
 
             }
             else {
@@ -490,7 +485,6 @@ fn get_xrd_folder_from_file (steam_vdf_file_path: String) -> std::io::Result<Str
     }
 
     Ok(format!("{}/steamapps/common/GUILTY GEAR Xrd -REVELATOR-",last_storage_path))
-
 }
 
 fn print_different_versions(current:&AppStruct,latest:&TAG_INFO) -> bool {
@@ -541,15 +535,10 @@ impl Manager {
                 self.config = serde_json::from_str(&contents)?;
             }
         }
-
         Ok(())
     }
 
     fn save_config(&mut self) -> std::io::Result<()>  {
-        println!("WHO IS SAVING THE CONF");
-        // &self.recreate_config();
-        // let config_string = serde_json::to_string(&self.apps)?;
-
         let mut file = File::create(self.config.get_db_file_path())?;
 
         let config_string = serde_json::to_string(&self.config)?;
@@ -558,7 +547,6 @@ impl Manager {
     }
 
     fn get_latest_tags_hash_map(&self) -> HashMap<String, TAG_INFO> {
-
         let mut tags_hashmap:HashMap<String, TAG_INFO> =HashMap::new();
         for (appname,appstruct) in &self.config.apps {
             let result = appstruct.get_latest_tag();
@@ -573,28 +561,27 @@ impl Manager {
             }
         }
         tags_hashmap
-
     }
 
-    fn patch_app(&mut self, app: &mut AppStruct) {
-        let modpath_dir = &format!("{}/{}", self.config.get_db_dir_path(), app.get_app_name());
-        let xrd_game_folder = self.config.get_xrd_game_folder();
+    fn patch_app(&mut self, app_name: String) {
+        let modpath_dir = &format!("{}/{}", self.config.get_db_dir_path(), app_name);
+        let xrd_game_folder = self.config.get_xrd_game_folder().to_string();
 
+        let mut app = self.config.apps.get_mut(&app_name).unwrap();
         match app.app_type {
             APP_TYPE::HitboxOverlay => {
                 match app.patch_app(xrd_game_folder, modpath_dir) {
                     Ok(_) => {app.patched=true;}
                     Err(e) => {println!("Error when patching app '{}' '{e}'",app.get_app_name())}
                 }
-
             }
             _ => {println!("[🚫] App '{}' of type {:?} doesn't have a patch procedure. Skipping", app.get_app_name(),app.app_type)}
         }
-
     }
-    fn update_app(&mut self, app_name: &String, latest_tag_info: &TAG_INFO) {
-        let modpath_dir = &format!("{}/{}", self.config.get_db_dir_path(), app_name);
 
+    fn update_app(&mut self, app_name: String, latest_tag_info: &TAG_INFO) {
+        let db_dir_path = self.config.get_db_dir_path().to_string();
+        let modpath_dir = &format!("{}/{}", db_dir_path, app_name);
         let mut is_dir:bool=Path::new(modpath_dir).is_dir();
 
         match is_dir {
@@ -609,39 +596,26 @@ impl Manager {
             }
         }
 
+        let mut app_to_update = self.config.apps.get_mut(&app_name).unwrap();
 
         // App update (download new files)
-        match self.config.apps.get(app_name) {
-            Some(current_app) => {
-                if current_app.tag_name == latest_tag_info.tag_name.to_string() {
-                    println!("[✅ ] APP {} is up to date, skipping...",current_app.get_app_name());
-                } else {
-                    println!("[⚠️] Updating '{}'",current_app.get_app_name());
-                    match current_app.app_type {
-                        APP_TYPE::HitboxOverlay | APP_TYPE::FasterLoadingTimes | APP_TYPE::WakeupTool | APP_TYPE::MirrorColorSelect | APP_TYPE::BackgroundGamepad => {
-                            current_app.download_mod(modpath_dir, latest_tag_info);
-                        }
-                        _ => {println!("[🚫] App '{}' of type {:?} doesn't have a update procedure. Skipping", current_app.get_app_name(),current_app.app_type)}
-                    }
+        if app_to_update.tag_name == latest_tag_info.tag_name.to_string() {
+            println!("[✅ ] APP {} is up to date, skipping...", app_name);
+        } else {
+            println!("[⚠️] Updating '{}'", app_name);
+            match app_to_update.app_type {
+                APP_TYPE::HitboxOverlay | APP_TYPE::FasterLoadingTimes | APP_TYPE::WakeupTool | APP_TYPE::MirrorColorSelect | APP_TYPE::BackgroundGamepad => {
+                    app_to_update.download_mod(modpath_dir, latest_tag_info);
                 }
-            }
-            None => {
-                println!("App '{}' not found. Skipping for tag with url '{}'", app_name, latest_tag_info.html_url);
+                _ => {println!("[🚫] App '{}' of type {:?} doesn't have a update procedure. Skipping", app_name, app_to_update.app_type)}
             }
         }
 
-
-        // Update app info
-        let mut app_to_update = self.config.apps.get_mut(app_name).unwrap();
         app_to_update.tag_name = latest_tag_info.tag_name.to_string();
         app_to_update.published_at = latest_tag_info.published_at.to_string();
         app_to_update.url_source_version = latest_tag_info.html_url.to_string();
         app_to_update.id = latest_tag_info.id;
-
     }
-
-
-
 
     fn update_all(&mut self){
         let tags_hashmap: HashMap<String, TAG_INFO> = self.get_latest_tags_hash_map();
@@ -676,10 +650,21 @@ impl Manager {
             match ans {
                 Ok(true) => {
                     // Download
-                    // for (app_name,latest_tag_info) in &tags_hashmap {
-                    //     self.update_app(app_name, latest_tag_info);
-                    // }
-                    //
+                    for (app_name,latest_tag_info) in &tags_hashmap {
+                        // let app_to_update = self.config.apps.get(app_name).unwrap();
+                        // println!("{}", app_to_update.get_app_name())
+                        self.update_app(app_name.to_owned(), latest_tag_info);
+                        // match self.config.apps.get_mut(app_name) {
+                        //     Some(app_to_update) => {
+                        //         self.update_app(app_to_update, latest_tag_info);
+                        //     }
+                        //     _ => {
+                        //         println!("App '{}' not found. Skipping for tag with url '{}'", app_name, latest_tag_info.html_url);
+                        //     }
+                        // }
+                    }
+
+
                     // match self.save_config(){
                     //     Ok(_) => {
                     //         println!("Successfully saved the configuration.")
@@ -698,16 +683,31 @@ impl Manager {
                 Ok(false) => println!("That's too bad, I've heard great things about it."),
                 Err(_) => println!("Error with the input."),
             }
-
+        }
 
         // Patch
-        for (app_name,app) in &mut self.config.apps {
+        /// Get which apps to patch
+        let mut apps_to_patch_vec: Vec<String> = vec![];
+        for app in self.config.apps.values_mut() {
             if app.automatically_patch && !app.patched {
-                self.patch_app(app);
+                apps_to_patch_vec.push(app.get_app_name());
             }
-            // Else already patched or not patch automatically
         }
+
+        // Patch the apps
+        for app_name in apps_to_patch_vec {
+            self.patch_app(app_name);
         }
+
+        // // Post patch save
+        // match self.save_config(){
+        //     Ok(_) => {
+        //         println!("Successfully saved the configuration.")
+        //     }
+        //     Err(e) => {
+        //         println!("Error Saving the configuration: '{}'",e)
+        //     }
+        // }
     }
 }
 
