@@ -22,7 +22,7 @@ use futures::Stream;
 use std::process::Command;
 
 #[derive(Serialize, Deserialize, Debug)]
-struct TAG_ASSETS {
+struct TagAssets {
     // url: String,
     id: i32,
     name: String,
@@ -32,7 +32,7 @@ struct TAG_ASSETS {
     browser_download_url: String,
 }
 #[derive(Serialize, Deserialize, Debug)]
-struct TAG_INFO {
+struct TagInfo {
     // url: String,
     html_url: String,
     id: i32,
@@ -40,11 +40,11 @@ struct TAG_INFO {
     tarball_url: String,
     body: String,
     published_at: String,
-    assets: Vec<TAG_ASSETS>
+    assets: Vec<TagAssets>
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]
-enum APP_TYPE {
+enum AppType {
     #[default]
     Unknown,
     HitboxOverlay,
@@ -60,7 +60,7 @@ struct AppStruct {
     repo_name: String,
     // App type identifier
     #[serde(default)]
-    app_type: APP_TYPE,
+    app_type: AppType,
     // To update with each version
     #[serde(default)]
     id: i32,
@@ -89,20 +89,20 @@ impl AppStruct {
         format!("https://api.github.com/repos/{}/{}",self.repo_owner,self.repo_name).to_string()
     }
 
-    fn download_mod(&self,destination_dir: &String, tag_info: &TAG_INFO) {
+    fn download_mod(&self,destination_dir: &String, tag_info: &TagInfo) {
         let mut assets_whitelist:Vec<String> = vec![];
 
         match self.app_type {
-            APP_TYPE::WakeupTool => {
+            AppType::WakeupTool => {
                 assets_whitelist = vec![
                     format!("GGXrdReversalTool.{}.zip",tag_info.tag_name), // Iquis
                     format!("GGXrdReversalTool-{}.zip",tag_info.tag_name) // kkots
                 ];
             }
-            APP_TYPE::HitboxOverlay => {
+            AppType::HitboxOverlay => {
                 assets_whitelist = vec!["ggxrd_hitbox_overlay.zip".to_string()];
             }
-            APP_TYPE::FasterLoadingTimes => {
+            AppType::FasterLoadingTimes => {
                 if cfg!(windows) {
                     assets_whitelist = vec!["GGXrdFasterLoadingTimes.exe".to_string()];
                 }
@@ -113,10 +113,10 @@ impl AppStruct {
                     println!("Neither Linux or Windows detected, skipping tag {}",tag_info.tag_name);
                 }
             }
-            APP_TYPE::MirrorColorSelect => {
+            AppType::MirrorColorSelect => {
                 assets_whitelist = vec!["GGXrdMirrorColorSelect.zip".to_string()];
             }
-            APP_TYPE::BackgroundGamepad => {
+            AppType::BackgroundGamepad => {
                 if cfg!(windows) {
                     assets_whitelist = vec!["GGXrdBackgroundGamepad.exe".to_string()];
                 }
@@ -128,10 +128,10 @@ impl AppStruct {
                 }
             }
 
-            APP_TYPE::Unknown | _ => {}
+            AppType::Unknown | _ => {}
         }
 
-        let mut matched_assets_list: Vec<&TAG_ASSETS> = vec![];
+        let mut matched_assets_list: Vec<&TagAssets> = vec![];
 
         for asset in &tag_info.assets {
             if assets_whitelist.contains(&asset.name) {
@@ -157,7 +157,7 @@ impl AppStruct {
 
         // prepare patch
         match self.app_type {
-            APP_TYPE::HitboxOverlay => {
+            AppType::HitboxOverlay => {
                 files_to_copy = vec![
                     // "ggxrd_hitbox_overlay.ini".to_string(), // this file will be created automatically
                     "ggxrd_hitbox_overlay.dll".to_string(),
@@ -167,19 +167,19 @@ impl AppStruct {
                 else if cfg!(unix) {file_to_execute = "ggxrd_hitbox_patcher_linux".to_string();}
 
             }
-            APP_TYPE::FasterLoadingTimes => {
+            AppType::FasterLoadingTimes => {
 
                 if cfg!(windows){ file_to_execute = "GGXrdFasterLoadingTimes.exe".to_string();}
                 else if cfg!(unix) {file_to_execute = "GGXrdFasterLoadingTimes_linux".to_string();}
 
             }
-            APP_TYPE::BackgroundGamepad => {
+            AppType::BackgroundGamepad => {
 
                 if cfg!(windows){ file_to_execute = "GGXrdBackgroundGamepad.exe".to_string();}
                 else if cfg!(unix) {file_to_execute = "GGXrdBackgroundGamepad_linux".to_string();}
 
             }
-            APP_TYPE::Unknown | _ => {}
+            AppType::Unknown | _ => {}
         }
 
         for filename in files_to_copy {
@@ -221,15 +221,15 @@ impl AppStruct {
 
                 // Stdin (Custom per app)
                 match self.app_type {
-                    APP_TYPE::HitboxOverlay | APP_TYPE::FasterLoadingTimes | APP_TYPE::BackgroundGamepad => {
+                    AppType::HitboxOverlay | AppType::FasterLoadingTimes | AppType::BackgroundGamepad => {
                         stdin_input =format!("\n{xrd_binaries_folder_path}/GuiltyGearXrd.exe\n\n");
                         stdin_pipe.write_all(stdin_input.as_bytes()).unwrap();
                     }
-                    // Some apps might not require stdin
-                    _ => {}
-                    APP_TYPE::Unknown => {
+                    AppType::Unknown => {
                         println!("App {} of type {:?} doesn't support patching on Linux",self.get_app_name(),self.app_type);
                     }
+                    // Some apps might not require stdin
+                    _ => {}
                 }
                 //
                 // std::thread::sleep_ms(4000);
@@ -248,7 +248,7 @@ impl AppStruct {
     }
 
     #[tokio::main]
-    async fn get_latest_tag(&self) -> Result<TAG_INFO, reqwest::Error> {
+    async fn get_latest_tag(&self) -> Result<TagInfo, reqwest::Error> {
         // ➜  ~ curl -L \
         // -H "Accept: application/vnd.github+json" \
         // -H "X-GitHub-Api-Version: 2022-11-28" \
@@ -265,7 +265,7 @@ impl AppStruct {
         let client = reqwest::Client::builder().user_agent("Script-Check-Xrd-Tools").build();
         let response = client.unwrap().get(&repo_url_latest).headers(headers).send().await?;
         let response_status = response.status();
-        let mut tag_info: TAG_INFO = TAG_INFO {
+        let mut tag_info: TagInfo = TagInfo {
             html_url: "".to_string(),
             id: 0,
             tag_name: "".to_string(),
@@ -311,7 +311,7 @@ impl Config {
                 id: 0,
                 tag_name: "".to_string(),
                 published_at: "".to_string(),
-                app_type: APP_TYPE::HitboxOverlay,
+                app_type: AppType::HitboxOverlay,
                 url_source_version: "".to_string(),
                 automatically_patch: false,
                 patched: false,
@@ -326,7 +326,7 @@ impl Config {
                 id: 0,
                 tag_name: "".to_string(),
                 published_at: "".to_string(),
-                app_type: APP_TYPE::WakeupTool,
+                app_type: AppType::WakeupTool,
                 url_source_version: "".to_string(),
                 automatically_patch: false,
                 patched: false,
@@ -341,7 +341,7 @@ impl Config {
                 id: 0,
                 tag_name: "".to_string(),
                 published_at: "".to_string(),
-                app_type: APP_TYPE::WakeupTool,
+                app_type: AppType::WakeupTool,
                 url_source_version: "".to_string(),
                 automatically_patch: false,
                 patched: false,
@@ -356,7 +356,7 @@ impl Config {
                 id: 0,
                 tag_name: "".to_string(),
                 published_at: "".to_string(),
-                app_type: APP_TYPE::FasterLoadingTimes,
+                app_type: AppType::FasterLoadingTimes,
                 url_source_version: "".to_string(),
                 automatically_patch: false,
                 patched: false,
@@ -371,7 +371,7 @@ impl Config {
                 id: 0,
                 tag_name: "".to_string(),
                 published_at: "".to_string(),
-                app_type: APP_TYPE::MirrorColorSelect,
+                app_type: AppType::MirrorColorSelect,
                 url_source_version: "".to_string(),
                 automatically_patch: false,
                 patched: false,
@@ -386,7 +386,7 @@ impl Config {
                 id: 0,
                 tag_name: "".to_string(),
                 published_at: "".to_string(),
-                app_type: APP_TYPE::BackgroundGamepad,
+                app_type: AppType::BackgroundGamepad,
                 url_source_version: "".to_string(),
                 automatically_patch: false,
                 patched: false,
@@ -485,7 +485,7 @@ fn get_xrd_folder_from_file (steam_vdf_file_path: String) -> std::io::Result<Str
     Ok(format!("{}/steamapps/common/GUILTY GEAR Xrd -REVELATOR-",last_storage_path))
 }
 
-fn print_different_versions(current:&AppStruct,latest:&TAG_INFO) -> bool {
+fn print_different_versions(current:&AppStruct, latest:&TagInfo) -> bool {
     // for convenience returns true if a new version is fouund.
 
     println!("Checking updates for app: {}",current.get_app_name());
@@ -544,16 +544,16 @@ impl Manager {
         Ok(())
     }
 
-    fn get_latest_tags_hash_map(&self) -> HashMap<String, TAG_INFO> {
-        let mut tags_hashmap:HashMap<String, TAG_INFO> =HashMap::new();
-        for (appname,appstruct) in &self.config.apps {
-            let result = appstruct.get_latest_tag();
+    fn get_latest_tags_hash_map(&self) -> HashMap<String, TagInfo> {
+        let mut tags_hashmap:HashMap<String, TagInfo> =HashMap::new();
+        for app_struct in &self.config.apps.values() {
+            let result = app_struct.get_latest_tag();
             match result {
                 Ok(new_tag) => {
-                    tags_hashmap.insert(appstruct.get_app_name(), new_tag);
+                    tags_hashmap.insert(app_struct.get_app_name(), new_tag);
                 }
                 Err(e) => {
-                    println!("Error getting tag for app '{}': << {} >>", appstruct.get_app_name(), e);
+                    println!("Error getting tag for app '{}': << {} >>", app_struct.get_app_name(), e);
                     exit(1);
                 }
             }
@@ -567,7 +567,7 @@ impl Manager {
 
         let mut app = self.config.apps.get_mut(&app_name).unwrap();
         match app.app_type {
-            APP_TYPE::HitboxOverlay | APP_TYPE::FasterLoadingTimes | APP_TYPE::BackgroundGamepad => {
+            AppType::HitboxOverlay | AppType::FasterLoadingTimes | AppType::BackgroundGamepad => {
                 match app.patch_app(xrd_game_folder, modpath_dir) {
                     Ok(_) => {app.patched=true;}
                     Err(e) => {println!("Error when patching app '{}' '{e}'",app.get_app_name())}
@@ -577,7 +577,7 @@ impl Manager {
         }
     }
 
-    fn update_app(&mut self, app_name: String, latest_tag_info: &TAG_INFO) {
+    fn update_app(&mut self, app_name: String, latest_tag_info: &TagInfo) {
         let db_dir_path = self.config.get_db_dir_path().to_string();
         let modpath_dir = &format!("{}/{}", db_dir_path, app_name);
         let mut is_dir:bool=Path::new(modpath_dir).is_dir();
@@ -602,7 +602,7 @@ impl Manager {
         } else {
             println!("[⚠️] Updating '{}'", app_name);
             match app_to_update.app_type {
-                APP_TYPE::HitboxOverlay | APP_TYPE::FasterLoadingTimes | APP_TYPE::WakeupTool | APP_TYPE::MirrorColorSelect | APP_TYPE::BackgroundGamepad  => {
+                AppType::HitboxOverlay | AppType::FasterLoadingTimes | AppType::WakeupTool | AppType::MirrorColorSelect | AppType::BackgroundGamepad  => {
                     app_to_update.download_mod(modpath_dir, latest_tag_info);
                 }
                 _ => {println!("[🚫] App '{}' of type {:?} doesn't have a update procedure. Skipping", app_name, app_to_update.app_type)}
@@ -616,7 +616,7 @@ impl Manager {
     }
 
     fn update_all(&mut self){
-        let tags_hashmap: HashMap<String, TAG_INFO> = self.get_latest_tags_hash_map();
+        let tags_hashmap: HashMap<String, TagInfo> = self.get_latest_tags_hash_map();
         let mut new_verison_found_bool: bool = false;
 
         for (app_name,latest_tag_info) in &tags_hashmap {
@@ -704,19 +704,7 @@ fn main() {
 
     println!("Xrd folder {}",manager.config.get_xrd_game_folder());
 
-    // println!("{:#?}",manager.config);
-    // println!("{:#?}",manager.config.get_db_location());
-
-    // for app in &manager.config.apps {
-    //     println!("{:?}",app);
-    // }
-
     manager.update_all();
-
-    // println!("EOF apps print"); // TODO REMOVE VISUAL PRINT
-    // for app in &manager.config.apps {
-    //     println!("{:?}",app);
-    // }
 }
 
 
