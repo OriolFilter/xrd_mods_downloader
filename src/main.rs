@@ -426,14 +426,15 @@ impl Config {
 
     fn get_xrd_game_folder(&mut self) -> String {
         if self.xrd_game_folder.is_empty() {
-            let mut file_path = "";
+            let mut file_path: String;
 
             if cfg!(windows) {
                 println!("Windows is not supported");
                 exit(1);
             }
             else if cfg!(unix) {
-                file_path = "/home/????/.local/share/Steam/config/libraryfolders.vdf";
+                let home_path = env::var("HOME").unwrap().to_string();
+                file_path = format!("{home_path}/.local/share/Steam/config/libraryfolders.vdf").to_string();
 
             }
             else {
