@@ -434,7 +434,7 @@ impl Config {
             }
             else if cfg!(unix) {
                 let home_path = env::var("HOME").unwrap().to_string();
-                file_path = format!("{home_path}/.local/share/Steam/config/libraryfolders.vdf").to_string();
+                file_path = format!("{home_path}/.steam/root/config/libraryfolders.vdf").to_string();
 
             }
             else {
