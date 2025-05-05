@@ -494,7 +494,7 @@ fn print_different_versions(current:&AppStruct, latest:&TagInfo) -> bool {
         println!("[✅ ] APP {} is up to date!",current.get_app_name());
         return false
     } else {
-        println!("[⚠️] APP {} has a new version detected.",current.get_app_name());
+        println!("[⚠️ ] APP {} has a new version detected.",current.get_app_name());
 
         // Version
         println!("Version:\t'{}' -> '{}'",current.tag_name,latest.tag_name);
@@ -600,7 +600,7 @@ impl Manager {
         if app_to_update.tag_name == latest_tag_info.tag_name.to_string() {
             println!("[✅ ] APP {} is up to date, skipping...", app_name);
         } else {
-            println!("[⚠️] Updating '{}'", app_name);
+            println!("[⚠️ ] Updating '{}'", app_name);
             match app_to_update.app_type {
                 AppType::HitboxOverlay | AppType::FasterLoadingTimes | AppType::WakeupTool | AppType::MirrorColorSelect | AppType::BackgroundGamepad  => {
                     app_to_update.download_mod(modpath_dir, latest_tag_info);
