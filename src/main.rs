@@ -167,6 +167,12 @@ impl AppStruct {
                 else if cfg!(unix) {file_to_execute = "ggxrd_hitbox_patcher_linux".to_string();}
 
             }
+            APP_TYPE::FasterLoadingTimes => {
+
+                if cfg!(windows){ file_to_execute = "GGXrdFasterLoadingTimes.exe".to_string();}
+                else if cfg!(unix) {file_to_execute = "GGXrdFasterLoadingTimes_linux".to_string();}
+
+            }
             APP_TYPE::Unknown | _ => {}
         }
 
@@ -197,8 +203,8 @@ impl AppStruct {
             println!("Executing {}",executable_filepath);
 
             if cfg!(windows){
-                // Windows
                 Command::new(executable_filepath); // locked until released
+                // TODO TEST
 
             }
 
@@ -211,7 +217,7 @@ impl AppStruct {
 
                 // Stdin (Custom per app)
                 match self.app_type {
-                    APP_TYPE::HitboxOverlay => {
+                    APP_TYPE::HitboxOverlay | APP_TYPE::FasterLoadingTimes => {
                         stdin_input =format!("\n{xrd_binaries_folder_path}/GuiltyGearXrd.exe\n\n");
                         stdin_pipe.write_all(stdin_input.as_bytes()).unwrap();
                     }
@@ -305,20 +311,20 @@ impl Config {
         let mut new_app_hashmap: HashMap<String,AppStruct> = HashMap::new();
         let mut holder_apps_vector: Vec<AppStruct> = vec![];
 
-        // Hitbox Overlay
-        holder_apps_vector.push(
-            AppStruct{
-                repo_owner: "kkots".to_string(),
-                repo_name: "ggxrd_hitbox_overlay_2211".to_string(),
-                id: 0,
-                tag_name: "".to_string(),
-                published_at: "".to_string(),
-                app_type: APP_TYPE::HitboxOverlay,
-                url_source_version: "".to_string(),
-                automatically_patch: false,
-                patched: false,
-            }
-        );
+        // // Hitbox Overlay
+        // holder_apps_vector.push(
+        //     AppStruct{
+        //         repo_owner: "kkots".to_string(),
+        //         repo_name: "ggxrd_hitbox_overlay_2211".to_string(),
+        //         id: 0,
+        //         tag_name: "".to_string(),
+        //         published_at: "".to_string(),
+        //         app_type: APP_TYPE::HitboxOverlay,
+        //         url_source_version: "".to_string(),
+        //         automatically_patch: false,
+        //         patched: false,
+        //     }
+        // );
         //
         // // Wake up tool Iquis
         // holder_apps_vector.push(
@@ -348,19 +354,20 @@ impl Config {
         //     }
         // );
         //
-        // // Faster Loading Times kkots
-        // holder_apps_vector.push(
-        //     AppStruct{
-        //         repo_owner: "kkots".to_string(),
-        //         repo_name: "GGXrdFasterLoadingTimes".to_string(),
-        //         id: 0,
-        //         tag_name: "".to_string(),
-        //         published_at: "".to_string(),
-        //         app_type: APP_TYPE::FasterLoadingTimes,
-        //         url_source_version: "".to_string(),
-        //         automatically_patch: false,
-        //     }
-        // );
+        // Faster Loading Times kkots
+        holder_apps_vector.push(
+            AppStruct{
+                repo_owner: "kkots".to_string(),
+                repo_name: "GGXrdFasterLoadingTimes".to_string(),
+                id: 0,
+                tag_name: "".to_string(),
+                published_at: "".to_string(),
+                app_type: APP_TYPE::FasterLoadingTimes,
+                url_source_version: "".to_string(),
+                automatically_patch: false,
+                patched: false,
+            }
+        );
         //
         // // Mirror Color Select kkots
         // holder_apps_vector.push(
@@ -564,7 +571,7 @@ impl Manager {
 
         let mut app = self.config.apps.get_mut(&app_name).unwrap();
         match app.app_type {
-            APP_TYPE::HitboxOverlay => {
+            APP_TYPE::HitboxOverlay | APP_TYPE::FasterLoadingTimes => {
                 match app.patch_app(xrd_game_folder, modpath_dir) {
                     Ok(_) => {app.patched=true;}
                     Err(e) => {println!("Error when patching app '{}' '{e}'",app.get_app_name())}
