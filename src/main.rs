@@ -173,11 +173,15 @@ impl AppStruct {
                 else if cfg!(unix) {file_to_execute = "GGXrdFasterLoadingTimes_linux".to_string();}
 
             }
+            APP_TYPE::BackgroundGamepad => {
+
+                if cfg!(windows){ file_to_execute = "GGXrdBackgroundGamepad.exe".to_string();}
+                else if cfg!(unix) {file_to_execute = "GGXrdBackgroundGamepad_linux".to_string();}
+
+            }
             APP_TYPE::Unknown | _ => {}
         }
 
-        // files_to_copy.extend(files_to_copy_and_remove.to_owned());
-        // files_to_copy.push(file_to_execute.to_string());
         for filename in files_to_copy {
             // Copy from local_mod_folder to xrd_game_folder
             let source_file_path = format!("{}/{}", downloaded_mod_folder, filename);
@@ -217,12 +221,12 @@ impl AppStruct {
 
                 // Stdin (Custom per app)
                 match self.app_type {
-                    APP_TYPE::HitboxOverlay | APP_TYPE::FasterLoadingTimes => {
+                    APP_TYPE::HitboxOverlay | APP_TYPE::FasterLoadingTimes | APP_TYPE::BackgroundGamepad => {
                         stdin_input =format!("\n{xrd_binaries_folder_path}/GuiltyGearXrd.exe\n\n");
                         stdin_pipe.write_all(stdin_input.as_bytes()).unwrap();
                     }
-                    _ => { // Some apps might not require stdin
-                    }
+                    // Some apps might not require stdin
+                    _ => {}
                     APP_TYPE::Unknown => {
                         println!("App {} of type {:?} doesn't support patching on Linux",self.get_app_name(),self.app_type);
                     }
@@ -235,22 +239,10 @@ impl AppStruct {
                 println!("==============\n=== Stderr ===\n==============");
                 println!("{:#?}", child.stderr);
             }
-            // else { println!("Currently only linux is supported for auto patching execution. Files will be copied to the respective path" ) }
+            else { println!("Only Linux and Windows are supported for patching. Files will still be copied to the respective path." ) }
 
         }
-        else { println!("No executable file specified, skipping patch"); }
-        // if cfg!(unix) {
-        //     // cleanup (only in linux)
-        //     for filename in files_to_copy_and_remove {
-        //         let file_to_delete = format!("{}/{}", xrd_binaries_folder_path, filename);
-        //         match fs::remove_file(file_to_delete.to_string()) {
-        //             Ok(_) => {}
-        //             Err(e) => {
-        //                 println!("Error deleting file '{}' <{e}>.", file_to_delete);
-        //             }
-        //         }
-        //     }
-        // }
+        else { println!("App '{}' with type '{:?}' has no executable files declared, skipping patch",self.get_app_name(), self.app_type); }
 
         Ok(())
     }
@@ -354,21 +346,21 @@ impl Config {
         //     }
         // );
         //
-        // Faster Loading Times kkots
-        holder_apps_vector.push(
-            AppStruct{
-                repo_owner: "kkots".to_string(),
-                repo_name: "GGXrdFasterLoadingTimes".to_string(),
-                id: 0,
-                tag_name: "".to_string(),
-                published_at: "".to_string(),
-                app_type: APP_TYPE::FasterLoadingTimes,
-                url_source_version: "".to_string(),
-                automatically_patch: false,
-                patched: false,
-            }
-        );
-        //
+        // // Faster Loading Times kkots
+        // holder_apps_vector.push(
+        //     AppStruct{
+        //         repo_owner: "kkots".to_string(),
+        //         repo_name: "GGXrdFasterLoadingTimes".to_string(),
+        //         id: 0,
+        //         tag_name: "".to_string(),
+        //         published_at: "".to_string(),
+        //         app_type: APP_TYPE::FasterLoadingTimes,
+        //         url_source_version: "".to_string(),
+        //         automatically_patch: false,
+        //         patched: false,
+        //     }
+        // );
+        // 
         // // Mirror Color Select kkots
         // holder_apps_vector.push(
         //     AppStruct{
@@ -380,23 +372,24 @@ impl Config {
         //         app_type: APP_TYPE::MirrorColorSelect,
         //         url_source_version: "".to_string(),
         //         automatically_patch: false,
+        //         patched: false,
         //     }
         // );
         //
-        //
-        // // Background Gamepad kkots
-        // holder_apps_vector.push(
-        //     AppStruct{
-        //         repo_owner: "kkots".to_string(),
-        //         repo_name: "GGXrdBackgroundGamepad".to_string(),
-        //         id: 0,
-        //         tag_name: "".to_string(),
-        //         published_at: "".to_string(),
-        //         app_type: APP_TYPE::MirrorColorSelect,
-        //         url_source_version: "".to_string(),
-        //         automatically_patch: false,
-        //     }
-        // );
+        // Background Gamepad kkots
+        holder_apps_vector.push(
+            AppStruct{
+                repo_owner: "kkots".to_string(),
+                repo_name: "GGXrdBackgroundGamepad".to_string(),
+                id: 0,
+                tag_name: "".to_string(),
+                published_at: "".to_string(),
+                app_type: APP_TYPE::BackgroundGamepad,
+                url_source_version: "".to_string(),
+                automatically_patch: true,
+                patched: false,
+            }
+        );
 
         for app in holder_apps_vector {
             new_app_hashmap.insert(app.get_app_name(),app);
@@ -438,7 +431,7 @@ impl Config {
                 exit(1);
             }
             else if cfg!(unix) {
-                file_path = "/home/goblin/.local/share/Steam/config/libraryfolders.vdf";
+                file_path = "/home/????/.local/share/Steam/config/libraryfolders.vdf";
 
             }
             else {
@@ -571,7 +564,7 @@ impl Manager {
 
         let mut app = self.config.apps.get_mut(&app_name).unwrap();
         match app.app_type {
-            APP_TYPE::HitboxOverlay | APP_TYPE::FasterLoadingTimes => {
+            APP_TYPE::HitboxOverlay | APP_TYPE::FasterLoadingTimes | APP_TYPE::BackgroundGamepad => {
                 match app.patch_app(xrd_game_folder, modpath_dir) {
                     Ok(_) => {app.patched=true;}
                     Err(e) => {println!("Error when patching app '{}' '{e}'",app.get_app_name())}
@@ -606,7 +599,7 @@ impl Manager {
         } else {
             println!("[⚠️] Updating '{}'", app_name);
             match app_to_update.app_type {
-                APP_TYPE::HitboxOverlay | APP_TYPE::FasterLoadingTimes | APP_TYPE::WakeupTool | APP_TYPE::MirrorColorSelect | APP_TYPE::BackgroundGamepad => {
+                APP_TYPE::HitboxOverlay | APP_TYPE::FasterLoadingTimes | APP_TYPE::WakeupTool | APP_TYPE::MirrorColorSelect | APP_TYPE::BackgroundGamepad  => {
                     app_to_update.download_mod(modpath_dir, latest_tag_info);
                 }
                 _ => {println!("[🚫] App '{}' of type {:?} doesn't have a update procedure. Skipping", app_name, app_to_update.app_type)}
