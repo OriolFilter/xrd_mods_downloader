@@ -633,7 +633,6 @@ impl Manager {
             }
         }
 
-
         // Download
         if !new_verison_found_bool {
             println!("No new versions found. Exiting...");
@@ -649,33 +648,17 @@ impl Manager {
                 Ok(true) => {
                     // Download
                     for (app_name,latest_tag_info) in &tags_hashmap {
-                        // let app_to_update = self.config.apps.get(app_name).unwrap();
-                        // println!("{}", app_to_update.get_app_name())
                         self.update_app(app_name.to_owned(), latest_tag_info);
-                        // match self.config.apps.get_mut(app_name) {
-                        //     Some(app_to_update) => {
-                        //         self.update_app(app_to_update, latest_tag_info);
-                        //     }
-                        //     _ => {
-                        //         println!("App '{}' not found. Skipping for tag with url '{}'", app_name, latest_tag_info.html_url);
-                        //     }
-                        // }
                     }
 
-
-                    // match self.save_config(){
-                    //     Ok(_) => {
-                    //         println!("Successfully saved the configuration.")
-                    //     }
-                    //     Err(e) => {
-                    //         println!("Error Saving the configuration: '{}'",e)
-                    //     }
-                    // }
-
-                    // // Automatically patch apps (for those enabled)
-                    // for (app_name,latest_tag_info) in &tags_hashmap {
-                    //     self.patch_app(app_name);
-                    // }
+                    match self.save_config(){
+                        Ok(_) => {
+                            println!("Successfully saved the configuration.")
+                        }
+                        Err(e) => {
+                            println!("Error Saving the configuration: '{}'",e)
+                        }
+                    }
 
                 },
                 Ok(false) => println!("That's too bad, I've heard great things about it."),
@@ -697,15 +680,15 @@ impl Manager {
             self.patch_app(app_name);
         }
 
-        // // Post patch save
-        // match self.save_config(){
-        //     Ok(_) => {
-        //         println!("Successfully saved the configuration.")
-        //     }
-        //     Err(e) => {
-        //         println!("Error Saving the configuration: '{}'",e)
-        //     }
-        // }
+        // Post patch save
+        match self.save_config(){
+            Ok(_) => {
+                println!("Successfully saved the configuration.")
+            }
+            Err(e) => {
+                println!("Error Saving the configuration: '{}'",e)
+            }
+        }
     }
 }
 
@@ -714,11 +697,11 @@ fn main() {
         config: Config{ apps: HashMap::new(), xrd_game_folder: "".to_string() }
     };
 
-
     match manager.load_config() {
         Ok(_) => {println!("Config loaded correctly")}
         Err(e) => {println!("There was an error loading the config: {e}")}
     }
+
     println!("Xrd folder {}",manager.config.get_xrd_game_folder());
 
     // println!("{:#?}",manager.config);
