@@ -10,6 +10,21 @@ The mods will be downloaded where this script executable is located.
 
 A file named db.json will be used to keep track of the repos, their settings and their latest version applied.
 
+```text
+# tree   
+.
+├── db.json
+├── Iquis
+│   └── rev2-wakeup-tool
+├── kkots
+│   ├── GGXrdBackgroundGamepad
+│   ├── GGXrdFasterLoadingTimes
+│   ├── ggxrd_hitbox_overlay_2211
+│   ├── GGXrdMirrorColorSelect
+│   └── rev2-wakeup-tool
+└── xrd_mods_downloader.exe
+```
+
 ## Mods
 
 | mod                                                                                   | can be patched |
