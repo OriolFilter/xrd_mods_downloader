@@ -38,4 +38,4 @@ A file named db.json will be used to keep track of the repos, their settings and
 
 ## How to Use
 
-## How to Patch
+## Enable Patch
