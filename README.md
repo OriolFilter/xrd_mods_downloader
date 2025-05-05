@@ -40,7 +40,7 @@ A file named db.json will be used to keep track of the repos, their settings and
 
 ## Enable Patching
 
-Modify the value `automatically_patch` from the app to patch in the file `db.json`.
+Set the value `automatically_patch` to `true` from the app to patch in the file `db.json`.
 
 Since the file generated doesn't display a friendly format, pages such as https://jsonviewer.stack.hu/ can be used to format the json and afterward modify it. 
 
