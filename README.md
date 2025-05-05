@@ -27,15 +27,48 @@ A file named db.json will be used to keep track of the repos, their settings and
 
 ## Mods
 
-| mod                                                                                   | can be patched |
-|---------------------------------------------------------------------------------------|----------------|
-| [Iquis/rev2-wakeup-tool](https://github.com/Iquis/rev2-wakeup-tool)                   |                |
-| [kkots/rev2-wakeup-tool](https://github.com/kkots/rev2-wakeup-tool)                   |                |
-| [kkots/ggxrd_hitbox_overlay_2211](https://github.com/kkots/ggxrd_hitbox_overlay_2211) | ✅              |
-| [kkots/GGXrdFasterLoadingTimes](https://github.com/kkots/GGXrdFasterLoadingTimes)     | ✅              |
-| [kkots/GGXrdMirrorColorSelect](https://github.com/kkots/GGXrdMirrorColorSelect)       |                |
-| [kkots/GGXrdBackgroundGamepad](https://github.com/kkots/GGXrdBackgroundGamepad)       | ✅              |
+| mod                                                                                   | can be patched (Linux) | can be patched (Windows) |
+|---------------------------------------------------------------------------------------|------------------------|--------------------------|
+| [Iquis/rev2-wakeup-tool](https://github.com/Iquis/rev2-wakeup-tool)                   |                        |                          |
+| [kkots/rev2-wakeup-tool](https://github.com/kkots/rev2-wakeup-tool)                   |                        |                          |
+| [kkots/ggxrd_hitbox_overlay_2211](https://github.com/kkots/ggxrd_hitbox_overlay_2211) | ✅                      | ✅? Test pending          |
+| [kkots/GGXrdFasterLoadingTimes](https://github.com/kkots/GGXrdFasterLoadingTimes)     | ✅                      | ✅? Test pending          |
+| [kkots/GGXrdMirrorColorSelect](https://github.com/kkots/GGXrdMirrorColorSelect)       |                        |                          |
+| [kkots/GGXrdBackgroundGamepad](https://github.com/kkots/GGXrdBackgroundGamepad)       | ✅                      | ✅? Test pending          |
 
 ## How to Use
 
-## Enable Patch
+## Enable Patching
+
+Modify the value `automatically_patch` from the app to patch in the file `db.json`.
+
+Since the file generated doesn't display a friendly format, pages such as https://jsonviewer.stack.hu/ can be used to format the json and afterward modify it. 
+
+Once modified, the next time the script is used the mod will be patched.
+
+```json
+{
+    ...
+    "kkots/GGXrdBackgroundGamepad": {
+      "repo_owner": "kkots",
+      "repo_name": "GGXrdBackgroundGamepad",
+      "app_type": "BackgroundGamepad",
+      "id": 205349779,
+      "tag_name": "1",
+      "published_at": "2025-03-12T16:23:27Z",
+      "url_source_version": "https://github.com/kkots/GGXrdBackgroundGamepad/releases/tag/1",
+      "automatically_patch": false,  ->  true
+      "patched": false
+    }
+    ...
+}
+```
+
+### Note
+
+If the binary of GuiltyGearXrd.exe file was previously patched, it won't be detected and patched all over again.
+
+As well, if there is a new versions of a mod it won't be automatically patched.
+
+**The patching is done through the respective files provided by the mod.**
+
