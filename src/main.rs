@@ -5,7 +5,7 @@ use std::fs::{File, create_dir, create_dir_all, Permissions};
 use std::io::{Read, Seek, Write};
 use std::path::Path;
 use std::process::{exit, Stdio};
-use futures::future::{err, SelectAll};
+use futures::future::{err, ok, SelectAll};
 use reqwest;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value};
@@ -72,7 +72,10 @@ struct AppStruct {
     #[serde(default)]
     url_source_version: String,
     #[serde(default)]
-    automatically_patch: bool
+    automatically_patch: bool,
+    #[serde(default)]
+    patched: bool
+
 }
 
 impl AppStruct {
@@ -148,33 +151,31 @@ impl AppStruct {
         }
     }
 
-    fn patch_app(&self, xrd_game_folder: String, downloaded_mod_folder: &String, tag_info: &TAG_INFO) -> io::Result<()> {
+    fn patch_app(&self, xrd_game_folder: String, downloaded_mod_folder: &String) -> io::Result<()> {
         let xrd_binaries_folder_path = format!("{}/Binaries/Win32", xrd_game_folder);
-        let mut files_to_copy_and_remove:Vec<String> = vec![]; // files to copy and later can be removed
+        // let mut files_to_copy_and_remove:Vec<String> = vec![]; // files to copy and later can be removed
         let mut files_to_copy:Vec<String> = vec![]; // files to only copy
         let mut file_to_execute:String = String::new(); // file to copy, execute, and delete.
-        let mut stdin: String = String::new();
 
         // prepare patch
         match self.app_type {
             APP_TYPE::HitboxOverlay => {
-                files_to_copy_and_remove = vec![
-                    "ggxrd_hitbox_overlay.dll".to_string(),
-                ];
+                // files_to_copy_and_remove = vec![
+                // ];
 
                 files_to_copy = vec![
-                    "ggxrd_hitbox_overlay.ini".to_string(), // this will override any existing config tho //TODO
+                    // "ggxrd_hitbox_overlay.ini".to_string(), // this file will be created automatically
+                    "ggxrd_hitbox_overlay.dll".to_string(),
                 ];
 
                 file_to_execute = "ggxrd_hitbox_patcher_linux".to_string();
 
-                stdin=format!("\n{}/GuiltyGearXrd.exe\n",xrd_binaries_folder_path);
             }
             APP_TYPE::Unknown | _ => {}
         }
 
-        files_to_copy.extend(files_to_copy_and_remove.to_owned());
-        files_to_copy.push(file_to_execute.to_string());
+        // files_to_copy.extend(files_to_copy_and_remove.to_owned());
+        // files_to_copy.push(file_to_execute.to_string());
         for filename in files_to_copy {
             // Copy from local_mod_folder to xrd_game_folder
             let source_file_path = format!("{}/{}", downloaded_mod_folder, filename);
@@ -196,39 +197,63 @@ impl AppStruct {
                 fs::set_permissions(executable_filepath.to_string(),permissions)?;
             }
 
-            if cfg!(unix) {
-                println!("Executing {}",executable_filepath);
-                let mut child = Command::new(executable_filepath.to_string())
-                    .stdin(Stdio::piped()).spawn()?;
+            // Call command
+            println!("Executing {}",executable_filepath);
 
-                println!("==============\n=== Stdout ===\n==============");
-                let mut stdin_pipe = child.stdin.take().unwrap();
-                stdin_pipe.write_all(stdin.as_bytes()).unwrap();
-                child.wait().unwrap();
+            if cfg!(windows){
+                // Windows
+                Command::new(executable_filepath); // locked until released
 
-
-                println!("==============\n=== Stderr ===\n==============");
-                println!("Stdout: {:#?}", child.stderr);
             }
-            else { println!("Currently only linux is supported for auto patching execution. Files will be copied to the respective path" ) }
 
-        }
+            else if cfg!(unix) {
+                println!("!!");
+                let mut child = Command::new(executable_filepath.to_string())
+                    .stdin(Stdio::piped())
+                    .spawn()?;
+                let mut stdin_input: String = String::new();
+                let mut stdin_pipe = child.stdin.take().unwrap();
 
-        if cfg!(unix) {
-            // cleanup (only in linux)
-            for filename in files_to_copy_and_remove {
-                let file_to_delete = format!("{}/{}", xrd_binaries_folder_path, filename);
-                match fs::remove_file(file_to_delete.to_string()) {
-                    Ok(_) => {}
-                    Err(e) => {
-                        println!("Error deleting file '{}' <{e}>.", file_to_delete);
+                // Stdin (Custom per app)
+                match self.app_type {
+                    APP_TYPE::HitboxOverlay => {
+                        stdin_input =format!("\n{xrd_binaries_folder_path}/GuiltyGearXrd.exe\n\n");
+                        stdin_pipe.write_all(stdin_input.as_bytes()).unwrap();
+                    }
+                    _ => { // Some apps might not require stdin
+                    }
+                    APP_TYPE::Unknown => {
+                        println!("App {} of type {:?} doesn't support patching on Linux",self.get_app_name(),self.app_type);
                     }
                 }
-            }
-        }
+                //
+                // std::thread::sleep_ms(4000);
+                println!("==============\n=== Stdout ===\n==============");
+                child.wait();
 
-        exit(1234);
+                println!("==============\n=== Stderr ===\n==============");
+                println!("{:#?}", child.stderr);
+            }
+            // else { println!("Currently only linux is supported for auto patching execution. Files will be copied to the respective path" ) }
+
+        }
+        else { println!("No executable file specified, skipping patch"); }
+        // if cfg!(unix) {
+        //     // cleanup (only in linux)
+        //     for filename in files_to_copy_and_remove {
+        //         let file_to_delete = format!("{}/{}", xrd_binaries_folder_path, filename);
+        //         match fs::remove_file(file_to_delete.to_string()) {
+        //             Ok(_) => {}
+        //             Err(e) => {
+        //                 println!("Error deleting file '{}' <{e}>.", file_to_delete);
+        //             }
+        //         }
+        //     }
+        // }
+
+        // exit(1234);
         println!(">:) bye");
+        Ok(())
     }
 
     #[tokio::main]
@@ -299,6 +324,7 @@ impl Config {
                 app_type: APP_TYPE::HitboxOverlay,
                 url_source_version: "".to_string(),
                 automatically_patch: false,
+                patched: false,
             }
         );
         //
@@ -550,29 +576,21 @@ impl Manager {
 
     }
 
-    fn patch_app(&mut self, app_name: &String, latest_tag_info: &TAG_INFO) {
-        let modpath_dir = &format!("{}/{}", self.config.get_db_dir_path(), app_name);
+    fn patch_app(&mut self, app: &mut AppStruct) {
+        let modpath_dir = &format!("{}/{}", self.config.get_db_dir_path(), app.get_app_name());
         let xrd_game_folder = self.config.get_xrd_game_folder();
 
-        match self.config.apps.get(app_name) {
-            Some(current_app) => {
-                println!("[🚧️] Patching '{}'",current_app.get_app_name());
-
-                match current_app.app_type {
-                    APP_TYPE::HitboxOverlay => {
-                        match current_app.patch_app(xrd_game_folder, modpath_dir, latest_tag_info) {
-                            Ok(_) => {}
-                            Err(e) => {println!("Error when patching app '{}' '{e}'",app_name)}
-                        }
-
-                    }
-                    _ => {println!("[🚫] App '{}' of type {:?} doesn't have a patch procedure. Skipping", current_app.get_app_name(),current_app.app_type)}
+        match app.app_type {
+            APP_TYPE::HitboxOverlay => {
+                match app.patch_app(xrd_game_folder, modpath_dir) {
+                    Ok(_) => {app.patched=true;}
+                    Err(e) => {println!("Error when patching app '{}' '{e}'",app.get_app_name())}
                 }
+
             }
-            None => {
-                println!("App '{}' not found. Skipping for tag with url '{}'", app_name, latest_tag_info.html_url);
-            }
+            _ => {println!("[🚫] App '{}' of type {:?} doesn't have a patch procedure. Skipping", app.get_app_name(),app.app_type)}
         }
+
     }
     fn update_app(&mut self, app_name: &String, latest_tag_info: &TAG_INFO) {
         let modpath_dir = &format!("{}/{}", self.config.get_db_dir_path(), app_name);
@@ -643,6 +661,8 @@ impl Manager {
             }
         }
 
+
+        // Download
         if !new_verison_found_bool {
             println!("No new versions found. Exiting...");
         }
@@ -669,10 +689,10 @@ impl Manager {
                     //     }
                     // }
 
-                    // Automatically patch apps (for those enabled)
-                    for (app_name,latest_tag_info) in &tags_hashmap {
-                        self.patch_app(app_name, latest_tag_info);
-                    }
+                    // // Automatically patch apps (for those enabled)
+                    // for (app_name,latest_tag_info) in &tags_hashmap {
+                    //     self.patch_app(app_name);
+                    // }
 
                 },
                 Ok(false) => println!("That's too bad, I've heard great things about it."),
@@ -680,7 +700,13 @@ impl Manager {
             }
 
 
-
+        // Patch
+        for (app_name,app) in &mut self.config.apps {
+            if app.automatically_patch && !app.patched {
+                self.patch_app(app);
+            }
+            // Else already patched or not patch automatically
+        }
         }
     }
 }
