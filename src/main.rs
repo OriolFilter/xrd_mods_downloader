@@ -16,10 +16,18 @@ use zip::ZipArchive;
 use std::env;
 use std::io::SeekFrom::Current;
 use std::ops::BitOr;
-use std::os::unix::fs::PermissionsExt;
 use downloader::Verification::Failed;
 use futures::Stream;
 use std::process::Command;
+
+// Linux imports
+#[cfg(target_os = "linux")]
+use std::os::unix::fs::PermissionsExt;
+
+// Windows imports
+#[cfg(target_os = "windows")]
+// Get path from Windows registry
+use winreg::{RegKey,enums::*};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct TagAssets {
@@ -198,7 +206,8 @@ impl AppStruct {
             let executable_filepath = format!("{}/{}", downloaded_mod_folder, file_to_execute);
 
             // set chmod +x permissions (linux)
-            if cfg!(unix) {
+            #[cfg(target_os = "linux")]
+            {
                 let permissions = Permissions::from_mode(0o755);
                 fs::set_permissions(executable_filepath.to_string(),permissions)?;
             }
@@ -289,6 +298,20 @@ impl AppStruct {
     }
 
 }
+//
+// #[cfg(target_os = "windows")]
+// use winreg::RegKey;
+// #[cfg(target_os = "windows")]
+// use winreg::enums::*;
+//
+// #[cfg(target_os = "windows")]
+// fn macos_only() {
+//     let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
+// }
+
+// if false {
+
+// }
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Config {
@@ -426,15 +449,30 @@ impl Config {
 
     fn get_xrd_game_folder(&mut self) -> String {
         if self.xrd_game_folder.is_empty() {
-            let mut file_path: String;
+            let mut file_path: String=String::new();
 
             if cfg!(windows) {
-                println!("Windows is not supported");
-                exit(1);
+                let mut steampath=String::new();
+
+                #[cfg(target_os = "windows")]
+                {
+                    // Get path from Windows registry
+                    use winreg::RegKey;
+                    use winreg::enums::*;
+                    let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
+                    let cur_ver = hklm.open_subkey("SOFTWARE\\Wow6432Node\\Valve\\Steam");
+                    println!(">>> CUR_VER{:?}",cur_ver);
+                    // steampath = cur_ver.get_value("InstallPath")?;
+                }
+
+                println!("STEAM PATH >> {:#?}",steampath);
+                file_path = format!("{steampath}/config/libraryfolders.vdf").to_string();
+                    // let home_path = dirs::home_dir().unwrap().to_str().unwrap().to_string();
+                // file_path = format!("{home_path}/APPData/Roaming/root/config/libraryfolders.vdf").to_string();
             }
             else if cfg!(unix) {
-                let home_path = env::var("HOME").unwrap().to_string();
-                file_path = format!("{home_path}/.steam/root/config/libraryfolders.vdf").to_string();
+                let home_path = dirs::home_dir().unwrap().to_str().unwrap().to_string();
+                file_path = format!("{home_path}/config/libraryfolders.vdf").to_string();
 
             }
             else {
