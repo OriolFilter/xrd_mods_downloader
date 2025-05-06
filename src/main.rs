@@ -546,7 +546,7 @@ impl Manager {
 
     fn get_latest_tags_hash_map(&self) -> HashMap<String, TagInfo> {
         let mut tags_hashmap:HashMap<String, TagInfo> =HashMap::new();
-        for app_struct in &self.config.apps.values() {
+        for app_struct in self.config.apps.values() {
             let result = app_struct.get_latest_tag();
             match result {
                 Ok(new_tag) => {
