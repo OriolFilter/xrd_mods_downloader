@@ -216,7 +216,8 @@ impl AppStruct {
             println!("Executing {}",executable_filepath);
 
             if cfg!(windows){
-                Command::new(executable_filepath); // locked until released
+                // We will assume that all the
+                Command::new(executable_filepath).spawn()?.wait(); // locked until released
                 // TODO TEST
 
             }
