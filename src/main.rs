@@ -448,10 +448,10 @@ impl Config {
                 {
                     let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
                     let cur_ver = hklm.open_subkey("SOFTWARE\\Wow6432Node\\Valve\\Steam").unwrap();
-                    let steampath: String = cur_ver.get_value("InstallPath").unwrap();
+                    steampath = cur_ver.get_value("InstallPath").unwrap();
                 }
 
-                println!("STEAM PATH >> {:#?}",steampath);
+                println!("STEAM PATH >> {}",steampath.to_string());
                 file_path = format!("{steampath}/config/libraryfolders.vdf").to_string();
                     // let home_path = dirs::home_dir().unwrap().to_str().unwrap().to_string();
                 // file_path = format!("{home_path}/APPData/Roaming/root/config/libraryfolders.vdf").to_string();
