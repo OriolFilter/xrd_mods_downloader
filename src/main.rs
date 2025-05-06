@@ -462,7 +462,7 @@ impl Config {
                     let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
                     let cur_ver = hklm.open_subkey("SOFTWARE\\Wow6432Node\\Valve\\Steam");
                     println!(">>> CUR_VER{:?}",cur_ver);
-                    // steampath = cur_ver.get_value("InstallPath")?;
+                    steampath = cur_ver.get_value("InstallPath")?;
                 }
 
                 println!("STEAM PATH >> {:#?}",steampath);
@@ -472,13 +472,15 @@ impl Config {
             }
             else if cfg!(unix) {
                 let home_path = dirs::home_dir().unwrap().to_str().unwrap().to_string();
-                file_path = format!("{home_path}/config/libraryfolders.vdf").to_string();
+                file_path = format!("{home_path}/.steam/root/config/libraryfolders.vdf").to_string();
 
             }
             else {
                 println!("Neither Linux or Windows detected, skipping tag.");
                 exit(1);
             }
+            println!("{}",file_path.to_string());
+            println!("{:?}",get_xrd_folder_from_file(file_path.to_string()));
             self.xrd_game_folder = get_xrd_folder_from_file(file_path.to_string()).unwrap().to_string();
         }
         self.xrd_game_folder.to_string()
