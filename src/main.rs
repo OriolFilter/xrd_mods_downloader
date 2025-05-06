@@ -448,8 +448,7 @@ impl Config {
                 {
                     let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
                     let cur_ver = hklm.open_subkey("SOFTWARE\\Wow6432Node\\Valve\\Steam").unwrap();
-                    let steammm: String = cur_ver.get_value("InstallPath").unwrap();
-                    println!("InstallPath = {}", steammm);
+                    let steampath: String = cur_ver.get_value("InstallPath").unwrap();
                 }
 
                 println!("STEAM PATH >> {:#?}",steampath);
