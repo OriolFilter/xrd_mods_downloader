@@ -298,20 +298,7 @@ impl AppStruct {
     }
 
 }
-//
-// #[cfg(target_os = "windows")]
-// use winreg::RegKey;
-// #[cfg(target_os = "windows")]
-// use winreg::enums::*;
-//
-// #[cfg(target_os = "windows")]
-// fn macos_only() {
-//     let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
-// }
 
-// if false {
-
-// }
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Config {
@@ -454,15 +441,15 @@ impl Config {
             if cfg!(windows) {
                 let mut steampath=String::new();
 
+            // use winreg::RegKey;
+            // use winreg::enums::*;
+
                 #[cfg(target_os = "windows")]
                 {
-                    // Get path from Windows registry
-                    use winreg::RegKey;
-                    use winreg::enums::*;
                     let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
-                    let cur_ver = hklm.open_subkey("SOFTWARE\\Wow6432Node\\Valve\\Steam");
-                    println!(">>> CUR_VER{:?}",cur_ver);
-                    steampath = cur_ver.get_value("InstallPath")?;
+                    let cur_ver = hklm.open_subkey("SOFTWARE\\Wow6432Node\\Valve\\Steam").unwrap();
+                    let steammm: String = cur_ver.get_value("InstallPath").unwrap();
+                    println!("InstallPath = {}", steammm);
                 }
 
                 println!("STEAM PATH >> {:#?}",steampath);
