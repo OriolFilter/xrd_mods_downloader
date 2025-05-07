@@ -226,7 +226,7 @@ impl AppStruct {
             // Stdin
             if cfg!(unix) {
 
-                let mut stdin_input: String = String::new();
+                stdin_input = String::new();
 
                 // Stdin (Custom per app)
                 match self.app_type {
@@ -248,8 +248,21 @@ impl AppStruct {
 
             // Check status
             println!("==============\n=== Stderr ===\n==============");
-            println!("{:#?}", child_wait.is_err());
-            println!("{:#?}", child_wait.err());
+            println!("Is Err {:#?}", child_wait.is_err());
+            println!("Is Ok {:#?}", child_wait.is_ok());
+            println!("Err {:#?}", child_wait.err());
+
+            // let child_wait_unwrap = child_wait.unwrap();
+            // let child_wait_status = child_wait_unwrap.status;
+            // let child_wait_stderr = child_wait_unwrap.stderr;
+            // let child_wait_stdout = child_wait_unwrap.stdout;
+            // println!("Err {:#?}", child_wait.err());
+            // println!("Status success {:#?}", child_wait_status.success());
+            // println!("Status success {:#?}", child_wait_status.code());
+            // println!("Stderr {:#?}", child_wait_stderr);
+            // println!("Stderr is empty {:#?}", child_wait_stderr.is_empty());
+            // println!("Stdout is empty {:#?}", child_wait_stdout.is_empty());
+            // println!("Stdout {:#?}", child_wait_stdout);
 
             // successful_patch = child_wait.is_ok();
             // }
