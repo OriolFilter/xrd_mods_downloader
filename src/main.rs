@@ -2,7 +2,7 @@ use std::fmt::{format, Write as StdinWrite};
 use std::{fs, io};
 use std::collections::HashMap;
 use std::fs::{File, create_dir, create_dir_all, Permissions};
-use std::io::{Read, Seek, Write};
+use std::io::{Error, Read, Seek, Write};
 use std::path::Path;
 use std::process::{exit, Stdio};
 use futures::future::{err, ok, SelectAll};
@@ -162,6 +162,8 @@ impl AppStruct {
         let xrd_binaries_folder_path = format!("{}/Binaries/Win32", xrd_game_folder);
         let mut files_to_copy:Vec<String> = vec![]; // files to only copy
         let mut file_to_execute:String = String::new(); // file to execute. Copy skipped
+        let mut successful_patch =false;
+        let mut executable_filepath: String = String::new();
 
         // prepare patch
         match self.app_type {
@@ -203,7 +205,7 @@ impl AppStruct {
         }
 
         if !file_to_execute.is_empty() {
-            let executable_filepath = format!("{}/{}", downloaded_mod_folder, file_to_execute);
+            executable_filepath = format!("{}/{}", downloaded_mod_folder, file_to_execute);
 
             // set chmod +x permissions (linux)
             #[cfg(target_os = "linux")]
@@ -215,19 +217,16 @@ impl AppStruct {
             // Call command
             println!("Executing {}",executable_filepath);
 
-            if cfg!(windows){
-                // We will assume that all the
-                Command::new(executable_filepath).spawn()?.wait(); // locked until released
-                // TODO TEST
+            let mut command = Command::new(executable_filepath.to_string());
+            let mut stdin_input: String = String::new();
+            let mut child = command.stdin(Stdio::piped())
+                .spawn()?;
+            let mut stdin_pipe = child.stdin.take().unwrap();
 
-            }
+            // Stdin
+            if cfg!(unix) {
 
-            else if cfg!(unix) {
-                let mut child = Command::new(executable_filepath.to_string())
-                    .stdin(Stdio::piped())
-                    .spawn()?;
                 let mut stdin_input: String = String::new();
-                let mut stdin_pipe = child.stdin.take().unwrap();
 
                 // Stdin (Custom per app)
                 match self.app_type {
@@ -241,20 +240,31 @@ impl AppStruct {
                     // Some apps might not require stdin
                     _ => {}
                 }
-                //
-                // std::thread::sleep_ms(4000);
-                println!("==============\n=== Stdout ===\n==============");
-                child.wait();
-
-                println!("==============\n=== Stderr ===\n==============");
-                println!("{:#?}", child.stderr);
             }
-            else { println!("Only Linux and Windows are supported for patching. Files will still be copied to the respective path." ) }
+
+            // Stdout
+            println!("==============\n=== Stdout ===\n==============");
+            let mut child_wait = child.wait_with_output();
+
+            // Check status
+            println!("==============\n=== Stderr ===\n==============");
+            println!("{:#?}", child_wait.is_err());
+            println!("{:#?}", child_wait.err());
+
+            // successful_patch = child_wait.is_ok();
+            // }
+            // else {
+            //     panic!("Only Linux and Windows are supported for patching. Files will still be copied to the respective path.")
+            // }
+            // // else { return Err("Only Linux and Windows are supported for patching. Files will still be copied to the respective path.".into() ) }
 
         }
         else { println!("App '{}' with type '{:?}' has no executable files declared, skipping patch",self.get_app_name(), self.app_type); }
-
-        Ok(())
+        if successful_patch {
+            Ok(())
+        } else {
+            panic!("Error while executing {}",executable_filepath)
+        }
     }
 
     #[tokio::main]
@@ -452,10 +462,7 @@ impl Config {
                     steampath = cur_ver.get_value("InstallPath").unwrap();
                 }
 
-                println!("STEAM PATH >> {}",steampath.to_string());
                 file_path = format!("{steampath}/config/libraryfolders.vdf").to_string();
-                    // let home_path = dirs::home_dir().unwrap().to_str().unwrap().to_string();
-                // file_path = format!("{home_path}/APPData/Roaming/root/config/libraryfolders.vdf").to_string();
             }
             else if cfg!(unix) {
                 let home_path = dirs::home_dir().unwrap().to_str().unwrap().to_string();
@@ -466,8 +473,6 @@ impl Config {
                 println!("Neither Linux or Windows detected, skipping tag.");
                 exit(1);
             }
-            println!("{}",file_path.to_string());
-            println!("{:?}",get_xrd_folder_from_file(file_path.to_string()));
             self.xrd_game_folder = get_xrd_folder_from_file(file_path.to_string()).unwrap().to_string();
         }
         self.xrd_game_folder.to_string()
@@ -729,7 +734,7 @@ fn main() {
         Err(e) => {println!("There was an error loading the config: {e}")}
     }
 
-    println!("Xrd folder {}",manager.config.get_xrd_game_folder());
+    println!("Xrd folder located at: '{}'",manager.config.get_xrd_game_folder());
 
     manager.update_all();
 }
