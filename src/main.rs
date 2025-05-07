@@ -468,7 +468,7 @@ impl Config {
                     steampath = cur_ver.get_value("InstallPath").unwrap();
                 }
 
-                file_path = format!("{steampath}/config/libraryfolders.vdf").to_string();
+                file_path = format!("{steampath}\\config\\libraryfolders.vdf").to_string();
             }
             else if cfg!(unix) {
                 let home_path = dirs::home_dir().unwrap().to_str().unwrap().to_string();
@@ -520,7 +520,11 @@ fn get_xrd_folder_from_file (steam_vdf_file_path: String) -> std::io::Result<Str
         exit(1);
     }
 
-    Ok(format!("{}/steamapps/common/GUILTY GEAR Xrd -REVELATOR-",last_storage_path))
+    if cfg!(windows) {
+        Ok(format!("{}\\steamapps\\common\\GUILTY GEAR Xrd -REVELATOR-",last_storage_path))
+    } else {
+        Ok(format!("{}/steamapps/common/GUILTY GEAR Xrd -REVELATOR-",last_storage_path))
+    }
 }
 
 fn print_different_versions(current:&AppStruct, latest:&TagInfo) -> bool {
@@ -743,6 +747,10 @@ fn main() {
     println!("Xrd folder located at: '{}'",manager.config.get_xrd_game_folder());
 
     manager.update_all();
+
+    let _ = Confirm::new("Done").
+        with_default(true).
+        with_help_message("Press enter to exit...").prompt();
 }
 
 
