@@ -159,6 +159,7 @@ impl AppStruct {
     }
 
     fn patch_app(&self, xrd_game_folder: String, downloaded_mod_folder: &String) -> io::Result<()> {
+        // This assumes that only Linux or Windows will reach this point.
         let xrd_binaries_folder_path = format!("{}/Binaries/Win32", xrd_game_folder);
         let mut files_to_copy:Vec<String> = vec![]; // files to only copy
         let mut file_to_execute:String = String::new(); // file to execute. Copy skipped
@@ -169,7 +170,6 @@ impl AppStruct {
         match self.app_type {
             AppType::HitboxOverlay => {
                 files_to_copy = vec![
-                    // "ggxrd_hitbox_overlay.ini".to_string(), // this file will be created automatically
                     "ggxrd_hitbox_overlay.dll".to_string(),
                 ];
 
@@ -248,35 +248,29 @@ impl AppStruct {
 
             // Check status
             println!("==============\n=== Stderr ===\n==============");
-            println!("Is Err {:#?}", child_wait.is_err());
-            println!("Is Ok {:#?}", child_wait.is_ok());
-            println!("Err {:#?}", child_wait.err());
+            let child_wait_unwrap = child_wait.unwrap();
 
-            // let child_wait_unwrap = child_wait.unwrap();
-            // let child_wait_status = child_wait_unwrap.status;
-            // let child_wait_stderr = child_wait_unwrap.stderr;
-            // let child_wait_stdout = child_wait_unwrap.stdout;
-            // println!("Err {:#?}", child_wait.err());
-            // println!("Status success {:#?}", child_wait_status.success());
-            // println!("Status success {:#?}", child_wait_status.code());
-            // println!("Stderr {:#?}", child_wait_stderr);
-            // println!("Stderr is empty {:#?}", child_wait_stderr.is_empty());
-            // println!("Stdout is empty {:#?}", child_wait_stdout.is_empty());
-            // println!("Stdout {:#?}", child_wait_stdout);
+            match child_wait_unwrap.status.code() {
+                Some(0) => {
+                    successful_patch = true;
+                }
 
-            // successful_patch = child_wait.is_ok();
-            // }
-            // else {
-            //     panic!("Only Linux and Windows are supported for patching. Files will still be copied to the respective path.")
-            // }
-            // // else { return Err("Only Linux and Windows are supported for patching. Files will still be copied to the respective path.".into() ) }
-
+                Some(-1073741701) => { //x86
+                    println!("Exit code '{}'. Some DLLs might be missing.\nRefer to here to install the Latest Microsoft Visual C++ Redistributable Version https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170#latest-microsoft-visual-c-redistributable-version",child_wait_unwrap.status.code().unwrap(),)
+                }
+                Some(-1073741515) => { //x64
+                    println!("Exit code '{}'. Some 64bit DLLs might be missing.\nRefer to here to install the Latest Microsoft Visual C++ Redistributable Version https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170#latest-microsoft-visual-c-redistributable-version",child_wait_unwrap.status.code().unwrap(),)
+                }
+                unknown_code => {
+                    println!("Exit code '{}'. Ensure that the mod's executables can be manually executed. Maybe DLL are missing, for 32/86bits and/or 64bits https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170#latest-microsoft-visual-c-redistributable-version",unknown_code.unwrap())
+                }
+            }
         }
         else { println!("App '{}' with type '{:?}' has no executable files declared, skipping patch",self.get_app_name(), self.app_type); }
         if successful_patch {
             Ok(())
         } else {
-            panic!("Error while executing {}",executable_filepath)
+            panic!("Error while executing {}.",executable_filepath)
         }
     }
 
@@ -465,8 +459,7 @@ impl Config {
             if cfg!(windows) {
                 let mut steampath=String::new();
 
-            // use winreg::RegKey;
-            // use winreg::enums::*;
+            // TODO improve
 
                 #[cfg(target_os = "windows")]
                 {
@@ -799,9 +792,9 @@ fn download_file_to_path(file_url: String, destination_dir: String){
 fn unzip_file(zip_file_path: String, unzip_dir:String){
     // this was a copy pasta from somewhere
 
-    let zipfile = std::fs::File::open(&zip_file_path).unwrap();
+    let zipfile = File::open(&zip_file_path).unwrap();
 
-    let mut archive = zip::ZipArchive::new(zipfile).unwrap();
+    let mut archive = ZipArchive::new(zipfile).unwrap();
 
     for i in 0..archive.len() {
         let mut file = archive.by_index(i).unwrap();

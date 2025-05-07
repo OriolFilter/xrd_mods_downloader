@@ -72,3 +72,13 @@ As well, if there is a new versions of a mod it won't be automatically patched.
 
 **The patching is done through the respective files provided by the mod.**
 
+## Troubleshooting
+
+### Patching doesn't work (Windows)
+
+You might be missing some DLL in your PC, either x86 or x64.
+
+Try to execute the respective patch.exe files.
+
+https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170#latest-microsoft-visual-c-redistributable-version
+
