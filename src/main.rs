@@ -29,6 +29,9 @@ use std::os::unix::fs::PermissionsExt;
 // Get path from Windows registry
 use winreg::{RegKey,enums::*};
 
+
+// Structs / Implementations
+
 #[derive(Serialize, Deserialize, Debug)]
 struct TagAssets {
     // url: String,
@@ -485,72 +488,6 @@ impl Config {
     }
 }
 
-fn get_xrd_folder_from_file (steam_vdf_file_path: String) -> std::io::Result<String>  {
-    let contents = fs::read_to_string(steam_vdf_file_path)?.replace("\t"," ");
-
-    let mut xrd_line: i32=-1;
-    let xrd_game_id_txt = "\"520440\"";
-
-    let mut file_lines = contents.lines();
-    let mut last_storage_path:String="".to_string();
-    let mut current_line_count = 0;
-    let mut current_line_string: String;
-
-    while xrd_line < 0 && current_line_count < contents.lines().count() {
-        current_line_string = file_lines.next().unwrap().to_string();
-
-        if current_line_string.contains(xrd_game_id_txt)  {
-            xrd_line = current_line_count as i32;
-        }
-
-        if current_line_string.contains("\"path\"") && xrd_line < 0 {
-            let mut tmp_path: String = current_line_string;
-            tmp_path = tmp_path.trim().to_string(); // remove extra spaces left right
-            tmp_path = tmp_path.strip_prefix("\"path\"").unwrap().to_string(); // Remove starter "path"
-            tmp_path = tmp_path.trim().to_string(); // Trim again
-            tmp_path = tmp_path.replace("\"",""); // Remove quotes
-            last_storage_path = tmp_path;
-        }
-
-        current_line_count +=1;
-    }
-
-    if xrd_line < 0 {
-        println!("Xrd not found, exitting...");
-        exit(1);
-    }
-
-    if cfg!(windows) {
-        Ok(format!("{}\\steamapps\\common\\GUILTY GEAR Xrd -REVELATOR-",last_storage_path))
-    } else {
-        Ok(format!("{}/steamapps/common/GUILTY GEAR Xrd -REVELATOR-",last_storage_path))
-    }
-}
-
-fn print_different_versions(current:&AppStruct, latest:&TagInfo) -> bool {
-    // for convenience returns true if a new version is fouund.
-
-    println!("Checking updates for app: {}",current.get_app_name());
-
-    if current.tag_name == latest.tag_name && current.published_at == latest.published_at {
-        println!("[✅ ] APP {} is up to date!",current.get_app_name());
-        return false
-    } else {
-        println!("[⚠️ ] APP {} has a new version detected.",current.get_app_name());
-
-        // Version
-        println!("Version:\t'{}' -> '{}'",current.tag_name,latest.tag_name);
-        // Published date
-        println!("Published date: '{}' -> '{}'",current.published_at,latest.published_at);
-        // Source URL
-        println!("Source URL: '{}'",latest.html_url);
-        // Print notes
-        println!("Version notes:\n============\n{}\n============",latest.body.replace("\\n","\n").replace("\\r",""));
-    }
-    true
-}
-
-
 
 struct Manager {
     config: Config
@@ -734,6 +671,73 @@ impl Manager {
     }
 }
 
+// Functions
+
+fn get_xrd_folder_from_file (steam_vdf_file_path: String) -> std::io::Result<String>  {
+    let contents = fs::read_to_string(steam_vdf_file_path)?.replace("\t"," ");
+
+    let mut xrd_line: i32=-1;
+    let xrd_game_id_txt = "\"520440\"";
+
+    let mut file_lines = contents.lines();
+    let mut last_storage_path:String="".to_string();
+    let mut current_line_count = 0;
+    let mut current_line_string: String;
+
+    while xrd_line < 0 && current_line_count < contents.lines().count() {
+        current_line_string = file_lines.next().unwrap().to_string();
+
+        if current_line_string.contains(xrd_game_id_txt)  {
+            xrd_line = current_line_count as i32;
+        }
+
+        if current_line_string.contains("\"path\"") && xrd_line < 0 {
+            let mut tmp_path: String = current_line_string;
+            tmp_path = tmp_path.trim().to_string(); // remove extra spaces left right
+            tmp_path = tmp_path.strip_prefix("\"path\"").unwrap().to_string(); // Remove starter "path"
+            tmp_path = tmp_path.trim().to_string(); // Trim again
+            tmp_path = tmp_path.replace("\"",""); // Remove quotes
+            last_storage_path = tmp_path;
+        }
+
+        current_line_count +=1;
+    }
+
+    if xrd_line < 0 {
+        println!("Xrd not found, exitting...");
+        exit(1);
+    }
+
+    if cfg!(windows) {
+        Ok(format!("{}\\steamapps\\common\\GUILTY GEAR Xrd -REVELATOR-",last_storage_path))
+    } else {
+        Ok(format!("{}/steamapps/common/GUILTY GEAR Xrd -REVELATOR-",last_storage_path))
+    }
+}
+
+fn print_different_versions(current:&AppStruct, latest:&TagInfo) -> bool {
+    // for convenience returns true if a new version is fouund.
+
+    println!("Checking updates for app: {}",current.get_app_name());
+
+    if current.tag_name == latest.tag_name && current.published_at == latest.published_at {
+        println!("[✅ ] APP {} is up to date!",current.get_app_name());
+        return false
+    } else {
+        println!("[⚠️ ] APP {} has a new version detected.",current.get_app_name());
+
+        // Version
+        println!("Version:\t'{}' -> '{}'",current.tag_name,latest.tag_name);
+        // Published date
+        println!("Published date: '{}' -> '{}'",current.published_at,latest.published_at);
+        // Source URL
+        println!("Source URL: '{}'",latest.html_url);
+        // Print notes
+        println!("Version notes:\n============\n{}\n============",latest.body.replace("\\n","\n").replace("\\r",""));
+    }
+    true
+}
+
 fn download_file_to_path(file_url: String, destination_dir: String){
     // Download overlay.zip
     let file_to_download = Download::new(&file_url);
@@ -756,7 +760,6 @@ fn download_file_to_path(file_url: String, destination_dir: String){
         _ => {}
 
     }
-
 
     // let mut is_dir:bool=Path::new(mod_folder).is_dir();
 
@@ -809,21 +812,21 @@ fn unzip_file(zip_file_path: String, unzip_dir:String){
 }
 
 fn main() {
-    let mut manager = Manager {
-        config: Config{ apps: HashMap::new(), xrd_game_folder: "".to_string() }
-    };
-
-    match manager.load_config() {
-        Ok(_) => {println!("Config loaded correctly")}
-        Err(e) => {println!("There was an error loading the config: {e}")}
-    }
-
-    println!("Xrd folder located at: '{}'",manager.config.get_xrd_game_folder());
-
-    manager.update_all();
-
-    let _ = Confirm::new("Done").
-        with_default(true).
-        with_help_message("Press enter to exit...").prompt();
+    // let mut manager = Manager {
+    //     config: Config{ apps: HashMap::new(), xrd_game_folder: "".to_string() }
+    // };
+    //
+    // match manager.load_config() {
+    //     Ok(_) => {println!("Config loaded correctly")}
+    //     Err(e) => {println!("There was an error loading the config: {e}")}
+    // }
+    //
+    // println!("Xrd folder located at: '{}'",manager.config.get_xrd_game_folder());
+    //
+    // manager.update_all();
+    //
+    // let _ = Confirm::new("Done").
+    //     with_default(true).
+    //     with_help_message("Press enter to exit...").prompt();
 }
 
