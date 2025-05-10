@@ -19,7 +19,7 @@ use std::ops::BitOr;
 use downloader::Verification::Failed;
 use futures::Stream;
 use std::process::Command;
-use crate::{download_file_to_path, get_xrd_folder_from_file, unzip_file};
+use crate::functions::{download_file_to_path, get_xrd_folder_from_file, unzip_file};
 
 // Linux imports
 #[cfg(target_os = "linux")]

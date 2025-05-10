@@ -3,6 +3,8 @@ use stuff::*;
 
 mod manager;
 use manager::*;
+mod functions;
+
 
 use futures::Stream;
 use reqwest;
@@ -11,6 +13,7 @@ use std::collections::HashMap;
 use std::fmt::Write as StdinWrite;
 use std::io::{Read, Seek, Write};
 use std::ops::BitOr;
+use inquire::Confirm;
 
 // Linux imports
 #[cfg(target_os = "linux")]
@@ -119,7 +122,7 @@ fn main() -> Result<()> {
     println!("Xrd folder located at: '{}'",manager.config.get_xrd_game_folder());
 
     // manager.update_all();
-    //
+
     // let _ = Confirm::new("Done").
     //     with_default(true).
     //     with_help_message("Press enter to exit...").prompt();
