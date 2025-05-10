@@ -734,26 +734,6 @@ impl Manager {
     }
 }
 
-fn main() {
-    let mut manager = Manager {
-        config: Config{ apps: HashMap::new(), xrd_game_folder: "".to_string() }
-    };
-
-    match manager.load_config() {
-        Ok(_) => {println!("Config loaded correctly")}
-        Err(e) => {println!("There was an error loading the config: {e}")}
-    }
-
-    println!("Xrd folder located at: '{}'",manager.config.get_xrd_game_folder());
-
-    manager.update_all();
-
-    let _ = Confirm::new("Done").
-        with_default(true).
-        with_help_message("Press enter to exit...").prompt();
-}
-
-
 fn download_file_to_path(file_url: String, destination_dir: String){
     // Download overlay.zip
     let file_to_download = Download::new(&file_url);
@@ -827,3 +807,23 @@ fn unzip_file(zip_file_path: String, unzip_dir:String){
 
     println!("File '{}' extracted to '{}'",zip_file_path,unzip_dir);
 }
+
+fn main() {
+    let mut manager = Manager {
+        config: Config{ apps: HashMap::new(), xrd_game_folder: "".to_string() }
+    };
+
+    match manager.load_config() {
+        Ok(_) => {println!("Config loaded correctly")}
+        Err(e) => {println!("There was an error loading the config: {e}")}
+    }
+
+    println!("Xrd folder located at: '{}'",manager.config.get_xrd_game_folder());
+
+    manager.update_all();
+
+    let _ = Confirm::new("Done").
+        with_default(true).
+        with_help_message("Press enter to exit...").prompt();
+}
+
