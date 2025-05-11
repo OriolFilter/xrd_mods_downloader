@@ -86,8 +86,8 @@ pub struct AppStruct {
     #[serde(default = "set_false")]
     pub(crate) patched: bool,
     #[serde(default = "set_false")]
-    pub(crate) enabled: bool,
-    #[serde(default = "set_false")]
+    pub(crate) track_updates: bool,
+    #[serde(default = "set_false")] // TODO Unused
     pub(crate) tracked: bool,
 
 }
@@ -100,8 +100,8 @@ fn set_false() -> bool {
 
 impl AppStruct {
 
-    pub(crate) fn new(repo_owner: String, repo_name:String, app_type:AppType) -> AppStruct {
-        AppStruct{
+    pub(crate) fn new(repo_owner: String, repo_name:String, app_type:AppType) -> Self {
+        Self {
             repo_owner: repo_owner,
             repo_name: repo_name,
             id: 0,
@@ -111,7 +111,7 @@ impl AppStruct {
             url_source_version: "".to_string(),
             automatically_patch: false,
             patched: false,
-            enabled: false,
+            track_updates: false,
             tracked: false,
         }
     }
@@ -390,7 +390,7 @@ impl Config {
     pub(crate) fn get_db_dir_path(&mut self) -> String {
         match env::var("XRD_MOD_FOLDER") {
             Ok(env_val) => {
-                println!("XRD_MOD_FOLDER env is set to: {}. Overwriting executable location.",env_val);
+                // println!("XRD_MOD_FOLDER env is set to: {}. Overwriting executable location.",env_val);
                 env_val
             }
             _ => {

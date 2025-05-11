@@ -14,6 +14,7 @@
 //! [examples readme]: https://github.com/ratatui/ratatui/blob/main/examples/README.md
 
 use color_eyre::Result;
+use dirs::config_dir;
 use ratatui::{
     buffer::Buffer,
     crossterm::event::{self, Event, KeyCode, KeyEventKind},
@@ -24,6 +25,13 @@ use ratatui::{
     widgets::{Block, Padding, Paragraph, Tabs, Widget},
     DefaultTerminal,
 };
+
+use ratatui::{
+    style::{Style},
+    widgets::{List, ListState},
+    Frame,
+};
+
 use strum::{Display, EnumIter, FromRepr, IntoEnumIterator};
 
 use crate::manager::Manager;
@@ -53,11 +61,11 @@ enum AppState {
 #[derive(Default, Clone, Copy, Display, FromRepr, EnumIter)]
 enum SelectedTab {
     #[default]
-    #[strum(to_string = "Tab 1")]
+    #[strum(to_string = "Manage Mods")]
     Tab1,
     #[strum(to_string = "Tab 2")]
     Tab2,
-    #[strum(to_string = "Tab 3")]
+    #[strum(to_string = "Patch Mods")]
     Tab3,
     #[strum(to_string = "Tab 4")]
     Tab4,
@@ -75,11 +83,27 @@ impl App {
     fn handle_events(&mut self) -> std::io::Result<()> {
         if let Event::Key(key) = event::read()? {
             if key.kind == KeyEventKind::Press {
-                match key.code {
-                    KeyCode::Right => self.next_tab(),
-                    KeyCode::Left => self.previous_tab(),
-                    KeyCode::Char('q') | KeyCode::Esc => self.quit(),
-                    _ => {}
+                match self.selected_tab {
+                    SelectedTab::Tab1 => {
+                        match key.code {
+                            KeyCode::Right => self.next_tab(),
+                            KeyCode::Left => self.previous_tab(),
+                            KeyCode::Char('q') | KeyCode::Char('Q')| KeyCode::Esc => self.quit(),
+                            KeyCode::Char('s') => {},
+                            _ => {}
+                        }
+                    }
+                    // SelectedTab::Tab2 => {}
+                    // SelectedTab::Tab3 => {}
+                    // SelectedTab::Tab4 => {}
+                    _ => {
+                        match key.code {
+                            KeyCode::Right => self.next_tab(),
+                            KeyCode::Left => self.previous_tab(),
+                            KeyCode::Char('q') | KeyCode::Char('Q') | KeyCode::Esc => self.quit(),
+                            _ => {}
+                        }
+                    }
                 }
             }
         }
@@ -150,13 +174,17 @@ fn render_title(area: Rect, buf: &mut Buffer) {
 }
 
 fn render_footer(area: Rect, buf: &mut Buffer) {
-    Line::raw("◄ ► to change tab | Press q to quit")
+    Line::raw("◄ ► to change tab | Press s to save | Press q to quit")
         .centered()
         .render(area, buf);
 }
 
 impl Widget for SelectedTab {
     fn render(self, area: Rect, buf: &mut Buffer) {
+
+        // println!("{:#?}",self);
+        // use std::{thread, time::Duration};
+        // thread::sleep(Duration::from_millis(4000));
         // in a real app these might be separate widgets
         match self {
             Self::Tab1 => self.render_tab0(area, buf),
@@ -177,9 +205,26 @@ impl SelectedTab {
     }
 
     fn render_tab0(self, area: Rect, buf: &mut Buffer) {
-        Paragraph::new("Hello, World!")
-            .block(self.block())
-            .render(area, buf);
+        let mut config_manager = Manager::default();
+        // config_manager: Manager
+        config_manager.load_config();
+        let mut state = ListState::default();
+        let mut items: Vec<String> = Vec::new();
+        for app_names in config_manager.config.apps.keys() {
+            items.push(app_names.to_string());
+        }
+        items.sort();
+        let list = List::new(items).block(self.block())
+            // .block(Block::bordered().title("List"))
+            .highlight_style(Style::new().reversed())
+            .highlight_symbol(">>")
+            .repeat_highlight_symbol(true);
+
+        // println!("fuck");
+        // returnlist;
+        // frame.render_stateful_widget(list, area, &mut state);
+
+        list.render(area, buf);
     }
 
     fn render_tab1(self, area: Rect, buf: &mut Buffer) {
