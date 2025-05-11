@@ -83,11 +83,11 @@ pub struct AppStruct {
     pub(crate) url_source_version: String,
     #[serde(default)]
     pub(crate) automatically_patch: bool,
-    #[serde(default = "set_false")]
+    #[serde(default)]
     pub(crate) patched: bool,
-    #[serde(default = "set_false")]
+    #[serde(default)]
     pub(crate) enabled: bool,
-    #[serde(default = "set_false")]
+    #[serde(default)]
     pub(crate) tracked: bool,
 
 }
