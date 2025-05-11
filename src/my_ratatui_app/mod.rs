@@ -151,7 +151,7 @@ impl Widget for &App {
         render_title(title_area, buf);
         self.render_tabs(tabs_area, buf);
         self.selected_tab.render(inner_area, buf);
-        render_footer(footer_area, buf);
+        render_footer(self,footer_area, buf);
     }
 }
 
@@ -173,10 +173,22 @@ fn render_title(area: Rect, buf: &mut Buffer) {
     "Ratatui Tabs Example".bold().render(area, buf);
 }
 
-fn render_footer(area: Rect, buf: &mut Buffer) {
-    Line::raw("◄ ► to change tab | Press s to save | Press q to quit")
-        .centered()
-        .render(area, buf);
+fn render_footer(app: &App, area: Rect, buf: &mut Buffer) {
+    match app.selected_tab {
+        SelectedTab::Tab1 => {
+            Line::raw("◄ ► to change tab | Press s to save | Press q to quit")
+                .centered()
+                .render(area, buf);
+        }
+        // SelectedTab::Tab2 => {}
+        // SelectedTab::Tab3 => {}
+        // SelectedTab::Tab4 => {}
+        _ => {
+            Line::raw("◄ ► to change tab | Press q to quit")
+                .centered()
+                .render(area, buf);
+        }
+    }
 }
 
 impl Widget for SelectedTab {

@@ -40,6 +40,7 @@ fn main() -> Result<()> {
     // println!("Xrd folder located at: '{}'",manager.config.get_xrd_game_folder());
     //
     // manager.update_all();
+    // Ok(())
 
     // let _ = Confirm::new("Done").
     //     with_default(true).
@@ -50,6 +51,5 @@ fn main() -> Result<()> {
     let app_result = crate::my_ratatui_app::App::default().run(terminal);
     ratatui::restore();
     app_result
-    // Ok(())
 }
 
