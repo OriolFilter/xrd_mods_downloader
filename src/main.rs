@@ -30,17 +30,15 @@ use std::os::unix::fs::PermissionsExt;
 use winreg::{enums::*, RegKey};
 
 fn main() -> Result<()> {
-    let mut manager = Manager {
-        config: Config{ apps: HashMap::new(), xrd_game_folder: "".to_string() }
-    };
-
-    match manager.load_config() {
-        Ok(_) => {println!("Config loaded correctly")}
-        Err(e) => {println!("There was an error loading the config: {e}")}
-    }
-
-    println!("Xrd folder located at: '{}'",manager.config.get_xrd_game_folder());
-
+    // let mut manager = Manager::default();
+    //
+    // match manager.load_config() {
+    //     Ok(_) => {println!("Config loaded correctly")}
+    //     Err(e) => {println!("There was an error loading the config: {e}")}
+    // }
+    //
+    // println!("Xrd folder located at: '{}'",manager.config.get_xrd_game_folder());
+    //
     // manager.update_all();
 
     // let _ = Confirm::new("Done").
@@ -49,8 +47,9 @@ fn main() -> Result<()> {
 
     color_eyre::install()?;
     let terminal = ratatui::init();
-    let app_result = crate::my_ratatui_app::App::default().run(terminal);
+let app_result = crate::my_ratatui_app::App::default().run(terminal);
     ratatui::restore();
     app_result
+    // Ok(())
 }
 

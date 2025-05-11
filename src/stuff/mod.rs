@@ -24,7 +24,7 @@ use crate::functions::{download_file_to_path, get_xrd_folder_from_file, unzip_fi
 // Linux imports
 #[cfg(target_os = "linux")]
 use std::os::unix::fs::PermissionsExt;
-
+use strum::{Display, EnumIter, FromRepr};
 // Windows imports
 #[cfg(target_os = "windows")]
 // Get path from Windows registry
@@ -65,7 +65,7 @@ pub enum AppType {
     BackgroundGamepad
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Default, Serialize, Deserialize, Debug)]
 pub struct AppStruct {
     repo_owner: String,
     repo_name: String,
@@ -83,14 +83,38 @@ pub struct AppStruct {
     pub(crate) url_source_version: String,
     #[serde(default)]
     pub(crate) automatically_patch: bool,
-    #[serde(default)]
-    pub(crate) patched: bool
+    #[serde(default = "set_false")]
+    pub(crate) patched: bool,
+    #[serde(default = "set_false")]
+    pub(crate) enabled: bool,
+    #[serde(default = "set_false")]
+    pub(crate) tracked: bool,
 
 }
 
 
+fn set_false() -> bool {
+    false
+}
+
 
 impl AppStruct {
+
+    pub(crate) fn new(repo_owner: String, repo_name:String, app_type:AppType) -> AppStruct {
+        AppStruct{
+            repo_owner: repo_owner,
+            repo_name: repo_name,
+            id: 0,
+            tag_name: "".to_string(),
+            published_at: "".to_string(),
+            app_type: app_type,
+            url_source_version: "".to_string(),
+            automatically_patch: false,
+            patched: false,
+            enabled: false,
+            tracked: false,
+        }
+    }
     pub(crate) fn get_app_name(&self) -> String {
         format!("{}/{}",self.repo_owner,self.repo_name).to_string()
     }
@@ -325,7 +349,7 @@ impl AppStruct {
 
 
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug,Default)]
 pub struct Config {
     #[serde(default)]
     pub(crate) apps: HashMap<String,AppStruct>,
@@ -339,94 +363,22 @@ impl Config {
         let mut holder_apps_vector: Vec<AppStruct> = vec![];
 
         // Hitbox Overlay
-        holder_apps_vector.push(
-            AppStruct{
-                repo_owner: "kkots".to_string(),
-                repo_name: "ggxrd_hitbox_overlay_2211".to_string(),
-                id: 0,
-                tag_name: "".to_string(),
-                published_at: "".to_string(),
-                app_type: AppType::HitboxOverlay,
-                url_source_version: "".to_string(),
-                automatically_patch: false,
-                patched: false,
-            }
-        );
+        holder_apps_vector.push(AppStruct::new("kkots".to_string(),"ggxrd_hitbox_overlay_2211".to_string(), AppType::HitboxOverlay));
 
         // Wake up tool Iquis
-        holder_apps_vector.push(
-            AppStruct{
-                repo_owner: "Iquis".to_string(),
-                repo_name: "rev2-wakeup-tool".to_string(),
-                id: 0,
-                tag_name: "".to_string(),
-                published_at: "".to_string(),
-                app_type: AppType::WakeupTool,
-                url_source_version: "".to_string(),
-                automatically_patch: false,
-                patched: false,
-            }
-        );
+        holder_apps_vector.push(AppStruct::new("Iquis".to_string(),"rev2-wakeup-tool".to_string(), AppType::WakeupTool));
 
-        // Wake up tool kkots
-        holder_apps_vector.push(
-            AppStruct{
-                repo_owner: "kkots".to_string(),
-                repo_name: "rev2-wakeup-tool".to_string(),
-                id: 0,
-                tag_name: "".to_string(),
-                published_at: "".to_string(),
-                app_type: AppType::WakeupTool,
-                url_source_version: "".to_string(),
-                automatically_patch: false,
-                patched: false,
-            }
-        );
+        // // Wake up tool kkots
+        holder_apps_vector.push(AppStruct::new("kkots".to_string(),"rev2-wakeup-tool".to_string(), AppType::WakeupTool));
 
-        // Faster Loading Times kkots
-        holder_apps_vector.push(
-            AppStruct{
-                repo_owner: "kkots".to_string(),
-                repo_name: "GGXrdFasterLoadingTimes".to_string(),
-                id: 0,
-                tag_name: "".to_string(),
-                published_at: "".to_string(),
-                app_type: AppType::FasterLoadingTimes,
-                url_source_version: "".to_string(),
-                automatically_patch: false,
-                patched: false,
-            }
-        );
+        // // Faster Loading Times kkots
+        holder_apps_vector.push(AppStruct::new("kkots".to_string(),"GGXrdFasterLoadingTimes".to_string(), AppType::FasterLoadingTimes));
 
-        // Mirror Color Select kkots
-        holder_apps_vector.push(
-            AppStruct{
-                repo_owner: "kkots".to_string(),
-                repo_name: "GGXrdMirrorColorSelect".to_string(),
-                id: 0,
-                tag_name: "".to_string(),
-                published_at: "".to_string(),
-                app_type: AppType::MirrorColorSelect,
-                url_source_version: "".to_string(),
-                automatically_patch: false,
-                patched: false,
-            }
-        );
+        // // Mirror Color Select kkots
+        holder_apps_vector.push(AppStruct::new("kkots".to_string(),"GGXrdMirrorColorSelect".to_string(), AppType::MirrorColorSelect));
 
-        // Background Gamepad kkots
-        holder_apps_vector.push(
-            AppStruct{
-                repo_owner: "kkots".to_string(),
-                repo_name: "GGXrdBackgroundGamepad".to_string(),
-                id: 0,
-                tag_name: "".to_string(),
-                published_at: "".to_string(),
-                app_type: AppType::BackgroundGamepad,
-                url_source_version: "".to_string(),
-                automatically_patch: false,
-                patched: false,
-            }
-        );
+        // // Background Gamepad kkots
+        holder_apps_vector.push(AppStruct::new("kkots".to_string(),"GGXrdBackgroundGamepad".to_string(), AppType::BackgroundGamepad));
 
         for app in holder_apps_vector {
             new_app_hashmap.insert(app.get_app_name(),app);

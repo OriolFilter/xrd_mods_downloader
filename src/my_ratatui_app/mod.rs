@@ -26,6 +26,8 @@ use ratatui::{
 };
 use strum::{Display, EnumIter, FromRepr, IntoEnumIterator};
 
+use crate::manager::Manager;
+
 fn main() -> Result<()> {
     color_eyre::install()?;
     let terminal = ratatui::init();
@@ -38,6 +40,7 @@ fn main() -> Result<()> {
 pub struct App {
     state: AppState,
     selected_tab: SelectedTab,
+    config_manager: Manager
 }
 
 #[derive(Default, Clone, Copy, PartialEq, Eq)]
@@ -73,8 +76,8 @@ impl App {
         if let Event::Key(key) = event::read()? {
             if key.kind == KeyEventKind::Press {
                 match key.code {
-                    KeyCode::Char('l') | KeyCode::Right => self.next_tab(),
-                    KeyCode::Char('h') | KeyCode::Left => self.previous_tab(),
+                    KeyCode::Right => self.next_tab(),
+                    KeyCode::Left => self.previous_tab(),
                     KeyCode::Char('q') | KeyCode::Esc => self.quit(),
                     _ => {}
                 }

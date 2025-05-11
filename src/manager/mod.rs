@@ -32,6 +32,7 @@ use std::os::unix::fs::PermissionsExt;
 // Get path from Windows registry
 use winreg::{RegKey,enums::*};
 
+#[derive(Default)]
 pub struct Manager {
     pub(crate) config: Config
 }
