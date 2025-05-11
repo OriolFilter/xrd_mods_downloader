@@ -2713,6 +2713,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "strum",
  "tokio",
  "winreg",
  "zip",
