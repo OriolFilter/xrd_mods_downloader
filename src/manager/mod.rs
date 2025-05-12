@@ -46,7 +46,7 @@ impl Manager {
 
         match is_present {
             false => {
-                println!("DB not found. Loading defaults.");
+                // println!("DB not found. Loading defaults.");
                 self.config.set_default_apps();
             }
             _ => {

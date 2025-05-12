@@ -54,7 +54,7 @@ pub struct TagInfo {
     assets: Vec<TagAssets>
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub enum AppType {
     #[default]
     Unknown,
@@ -65,7 +65,7 @@ pub enum AppType {
     BackgroundGamepad
 }
 
-#[derive(Default, Serialize, Deserialize, Debug)]
+#[derive(Default, Serialize, Deserialize, Debug, Clone)]
 pub struct AppStruct {
     repo_owner: String,
     repo_name: String,
@@ -86,6 +86,8 @@ pub struct AppStruct {
     #[serde(default = "set_false")]
     pub(crate) patched: bool,
     #[serde(default = "set_false")]
+    pub(crate) enabled: bool, // Whether if you want to keep it track/visible in other windows or not
+    #[serde(default = "set_false")] // TODO Unused
     pub(crate) track_updates: bool,
     #[serde(default = "set_false")] // TODO Unused
     pub(crate) tracked: bool,
@@ -111,6 +113,7 @@ impl AppStruct {
             url_source_version: "".to_string(),
             automatically_patch: false,
             patched: false,
+            enabled: false,
             track_updates: false,
             tracked: false,
         }
@@ -361,6 +364,10 @@ impl Config {
     pub(crate) fn set_default_apps (&mut self) {
         let mut new_app_hashmap: HashMap<String,AppStruct> = HashMap::new();
         let mut holder_apps_vector: Vec<AppStruct> = vec![];
+        // holder_apps_vector.push(AppStruct::new("a".to_string(),"a".to_string(), AppType::HitboxOverlay));
+        // holder_apps_vector.push(AppStruct::new("b".to_string(),"b".to_string(), AppType::HitboxOverlay));
+        // holder_apps_vector.push(AppStruct::new("c".to_string(),"c".to_string(), AppType::HitboxOverlay));
+
 
         // Hitbox Overlay
         holder_apps_vector.push(AppStruct::new("kkots".to_string(),"ggxrd_hitbox_overlay_2211".to_string(), AppType::HitboxOverlay));
