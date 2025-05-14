@@ -2,7 +2,9 @@ mod stuff;
 use stuff::*;
 
 mod my_ratatui_app;
-use my_ratatui_app::*;
+// use my_ratatui_app::*;
+
+// mod new_my_ratatui_app;
 
 mod manager;
 use manager::*;

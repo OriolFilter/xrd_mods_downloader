@@ -231,7 +231,15 @@ impl Widget for &App {
 
         render_title(title_area, buf);
         self.render_tabs(tabs_area, buf);
-        self.selected_tab.render(inner_area, buf);
+        // self.selected_tab.render(inner_area, buf);
+
+        match self.selected_tab {
+            SelectedTab::Tab1 => self.selected_tab.render_tab0(inner_area, buf),
+            SelectedTab::Tab2 => self.selected_tab.render_tab1(inner_area, buf),
+            SelectedTab::Tab3 => self.selected_tab.render_tab2(inner_area, buf),
+            SelectedTab::Tab4 => self.selected_tab.render_tab3(inner_area, buf),
+        }
+
         render_footer(self,footer_area, buf);
     }
 }
@@ -272,21 +280,6 @@ fn render_footer(app: &App, area: Rect, buf: &mut Buffer) {
     }
 }
 
-impl Widget for SelectedTab {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        // println!("{:#?}",self);
-        // use std::{thread, time::Duration};
-        // thread::sleep(Duration::from_millis(4000));
-        // in a real app these might be separate widgets
-        match self {
-            Self::Tab1 => self.render_tab0(area, buf),
-            Self::Tab2 => self.render_tab1(area, buf),
-            Self::Tab3 => self.render_tab2(area, buf),
-            Self::Tab4 => self.render_tab3(area, buf),
-        }
-    }
-}
-
 impl SelectedTab {
     /// Return tab's name as a styled `Line`
     fn title(self) -> Line<'static> {
@@ -307,19 +300,22 @@ impl SelectedTab {
         // }
 
 
-        let items: Vec<ListItem> = config_manager.config.apps.iter().map(|(app_name,app) | { let color = alternate_colors(c); c +=1 ; ListItem::new(app).bg(color) } ).collect();
-        let list = List::new(items_list)
+        // let items: Vec<ListItem> = config_manager.config.apps.iter().map(|(app_name,app) | { let color = alternate_colors(c); c +=1 ; ListItem::new(app).bg(color) } ).collect();
+        // let list = List::new(items_list)
+        //     .block(self.block())
+        //     // .block(Block::bordered().title("List"))
+        //     .highlight_style(Style::new().reversed())
+        //     .highlight_symbol(">>")
+        //     .repeat_highlight_symbol(true);
+        //
+        // println!("fuck");
+        // returnlist;
+        // frame.render_stateful_widget(list, area, &mut state);
+        //
+        // list.render(area, buf);
+        Paragraph::new("Tab1")
             .block(self.block())
-            // .block(Block::bordered().title("List"))
-            .highlight_style(Style::new().reversed())
-            .highlight_symbol(">>")
-            .repeat_highlight_symbol(true);
-
-        println!("fuck");
-        returnlist;
-        frame.render_stateful_widget(list, area, &mut state);
-
-        list.render(area, buf);
+            .render(area, buf);
     }
 
     fn render_tab1(self, area: Rect, buf: &mut Buffer) {
