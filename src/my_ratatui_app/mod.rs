@@ -104,7 +104,8 @@ pub struct App {
     state: AppState,
     selected_tab: SelectedTab,
     config_manager: Manager,
-    app_struct_list_menu: AppStructListMenu
+    app_struct_list_menu: AppStructListMenu,
+    list_state: ListState
 }
 
 #[derive(Default, Clone, Copy, PartialEq, Eq)]
@@ -130,7 +131,7 @@ enum SelectedTab {
 #[derive(Default)]
 struct ItemsList {
     config_manager:  Manager,
-    index: i32
+    index: i32,
 }
 
 impl App {
@@ -273,6 +274,7 @@ impl Widget for &App {
 impl App {
     fn render_tabs(&self, area: Rect, buf: &mut Buffer) {
         let titles = SelectedTab::iter().map(SelectedTab::title);
+        // let titles = SelectedTab::iter().map(SelectedTab::title);
         let highlight_style = (Color::default(), self.selected_tab.palette().c700);
         let selected_tab_index = self.selected_tab as usize;
         Tabs::new(titles)
@@ -388,7 +390,7 @@ impl SelectedTab {
             .highlight_spacing(HighlightSpacing::Always);
 
 
-        // StatefulWidget::render(list, area, buf, &mut items_list.state);
+        // StatefulWidget::render(list, area, buf, list_state);
         Widget::render(list, area, buf);
         // let new_items_list: Vec<ListItem> = items_list.iter()
         //     .map(|todo_item| {

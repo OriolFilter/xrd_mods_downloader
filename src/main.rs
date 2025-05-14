@@ -1,7 +1,8 @@
 mod stuff;
 use stuff::*;
 
-mod my_ratatui_app;
+// mod my_ratatui_app;
+mod actual_new_ratatui_app;
 // use my_ratatui_app::*;
 
 // mod new_my_ratatui_app;
@@ -47,11 +48,12 @@ fn main() -> Result<()> {
     // let _ = Confirm::new("Done").
     //     with_default(true).
     //     with_help_message("Press enter to exit...").prompt();
-
+    println!("hi");
     color_eyre::install()?;
     let terminal = ratatui::init();
-    let app_result = crate::my_ratatui_app::App::default().run(terminal);
+    let app_result = crate::actual_new_ratatui_app::App::default().run(terminal);
     ratatui::restore();
+    println!("bye");
     app_result
 }
 
