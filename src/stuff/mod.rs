@@ -67,8 +67,8 @@ pub enum AppType {
 
 #[derive(Default, Serialize, Deserialize, Debug, Clone)]
 pub struct AppStruct {
-    repo_owner: String,
-    repo_name: String,
+    pub(crate) repo_owner: String,
+    pub(crate) repo_name: String,
     // App type identifier
     #[serde(default)]
     pub(crate) app_type: AppType,

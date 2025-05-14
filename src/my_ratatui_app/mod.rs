@@ -14,6 +14,8 @@
 //! [examples readme]: https://github.com/ratatui/ratatui/blob/main/examples/README.md
 
 use std::collections::hash_map::Keys;
+use std::net::ToSocketAddrs;
+use std::thread;
 use std::thread::sleep;
 use color_eyre::owo_colors::OwoColorize;
 use color_eyre::Result;
@@ -35,8 +37,9 @@ use ratatui::{
     widgets::{List, ListState},
     Frame,
 };
+use ratatui::prelude::StatefulWidget;
 use ratatui::style::palette::tailwind::{GREEN, SLATE};
-use ratatui::widgets::ListItem;
+use ratatui::widgets::{HighlightSpacing, ListItem, Wrap};
 use strum::{Display, EnumIter, FromRepr, IntoEnumIterator};
 
 use crate::manager::Manager;
@@ -49,44 +52,44 @@ struct AppStructListMenu {
     state: ListState
 }
 
-//
-// struct TodoList {
-//     items: Vec<TodoItem>,
-//     state: ListState,
-// }
-//
-// #[derive(Debug)]
-// struct TodoItem {
-//     todo: String,
-//     info: String,
-//     status: Status,
-// }
-// #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-// enum Status {
-//     Todo,
-//     Completed,
-// }
-//
-// impl FromIterator<(Status, &'static str, &'static str)> for TodoList {
-//     fn from_iter<I: IntoIterator<Item = (Status, &'static str, &'static str)>>(iter: I) -> Self {
-//         let items = iter
-//             .into_iter()
-//             .map(|(status, todo, info)| TodoItem::new(status, todo, info))
-//             .collect();
-//         let state = ListState::default();
-//         Self { items, state }
-//     }
-// }
-//
-// impl TodoItem {
-//     fn new(status: Status, todo: &str, info: &str) -> Self {
-//         Self {
-//             status,
-//             todo: todo.to_string(),
-//             info: info.to_string(),
-//         }
-//     }
-// }
+#[derive(Debug)]
+struct TodoList {
+    items: Vec<TodoItem>,
+    state: ListState,
+}
+
+#[derive(Debug)]
+struct TodoItem {
+    todo: String,
+    info: String,
+    status: Status,
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+enum Status {
+    Todo,
+    Completed,
+}
+
+impl FromIterator<(Status, &'static str, &'static str)> for TodoList {
+    fn from_iter<I: IntoIterator<Item = (Status, &'static str, &'static str)>>(iter: I) -> Self {
+        let items = iter
+            .into_iter()
+            .map(|(status, todo, info)| TodoItem::new(status, todo, info))
+            .collect();
+        let state = ListState::default();
+        Self { items, state }
+    }
+}
+
+impl TodoItem {
+    fn new(status: Status, todo: &str, info: &str) -> Self {
+        Self {
+            status,
+            todo: todo.to_string(),
+            info: info.to_string(),
+        }
+    }
+}
 
 
 // Consts
@@ -222,6 +225,29 @@ impl SelectedTab {
 
 impl Widget for &App {
     fn render(self, area: Rect, buf: &mut Buffer) {
+
+        let mut config_manager = Manager::default();
+        // config_manager: Manager
+        config_manager.load_config();
+
+        // let mut app_names_sorted: Vec<String> = config_manager.config.apps.iter().map(|(app_name,app)| {app_name.to_string()}).collect(); // Get app_names_sorted
+        let mut app_names_sorted: Vec<String> = vec![];
+        for name in config_manager.config.apps.keys() {
+            app_names_sorted.push(name.to_string());
+        }
+
+        let mut app_sorted: Vec<AppStruct> = vec![    ];
+        app_names_sorted.sort();
+
+        for app_name in app_names_sorted {
+            // app_sorted.push(*config_manager.config.apps.get(&app_name).unwrap());
+            app_sorted.push(config_manager.config.apps.get(&app_name).unwrap().clone());
+        }
+
+
+
+
+        ///
         use Constraint::{Length, Min};
         let vertical = Layout::vertical([Length(1), Min(0), Length(1)]);
         let [header_area, inner_area, footer_area] = vertical.areas(area);
@@ -234,7 +260,7 @@ impl Widget for &App {
         // self.selected_tab.render(inner_area, buf);
 
         match self.selected_tab {
-            SelectedTab::Tab1 => self.selected_tab.render_tab0(inner_area, buf),
+            SelectedTab::Tab1 => self.selected_tab.render_tab0(inner_area, buf, app_sorted),
             SelectedTab::Tab2 => self.selected_tab.render_tab1(inner_area, buf),
             SelectedTab::Tab3 => self.selected_tab.render_tab2(inner_area, buf),
             SelectedTab::Tab4 => self.selected_tab.render_tab3(inner_area, buf),
@@ -289,33 +315,134 @@ impl SelectedTab {
             .into()
     }
 
-    fn render_tab0(self, area: Rect, buf: &mut Buffer) {
+    fn render_tab0(self, area: Rect, buf: &mut Buffer, app_list: Vec<AppStruct>) {
 
         // let mut items_list = vec![];
-        // let mut c=0;
         // for app in app_sorted {
         //     let color = alternate_colors(c);
         //     items_list.push(ListItem::from(app).bg(color));
         //     c+=1;
         // }
 
+        let mut todo_list = TodoList::from_iter([
+                (Status::Todo, "Rewrite everything with Rust!", "I can't hold my inner voice. He tells me to rewrite the complete universe with Rust"),
+                (Status::Completed, "Rewrite all of your tui apps with Ratatui", "Yes, you heard that right. Go and replace your tui with Ratatui."),
+        ]);
+
+        // let items_list: Vec<ListItem> = todo_list
+        //     .items
+        //     .iter()
+        //     .enumerate()
+        //     .map(|(i, todo_item)| {
+        //         let color = alternate_colors(i);
+        //         ListItem::from(todo_item).bg(color)
+        //     })
+        //     .collect();
 
         // let items: Vec<ListItem> = config_manager.config.apps.iter().map(|(app_name,app) | { let color = alternate_colors(c); c +=1 ; ListItem::new(app).bg(color) } ).collect();
+        let mut c=0;
+        // // let items_list: Vec<ListItem> = app_list.iter().map(| app | { let color = alternate_colors(c); c +=1 ; ListItem::new(app).bg(color) } ).collect();
+        // let items_list: Vec<ListItem> = app_list.iter().map(| app | { let color = alternate_colors(c); c +=1 ; ListItem::new(app.get_app_name()).bg(color) } ).collect();
+        // let items_list: Vec<ListItem> = app_list.iter().map(| app | { let color = alternate_colors(c); c +=1 ; ListItem::new(app).bg(color) } ).collect();
+
         // let list = List::new(items_list)
         //     .block(self.block())
         //     // .block(Block::bordered().title("List"))
         //     .highlight_style(Style::new().reversed())
         //     .highlight_symbol(">>")
         //     .repeat_highlight_symbol(true);
-        //
+
+
+        let mut items_list: Vec<AppStruct> = vec![];
+        // let mut new_items_list: Vec<ListItem> = vec![];
+
+        for app in app_list {
+
+            // let x = TodoItem{
+            //     todo: app.repo_owner.to_string(),
+            //     info: app.repo_owner.to_string(),
+            //     status: Status::Todo,
+            // };
+            // println!("{:#?}",app.repo_owner);
+            items_list.push(app);
+        }
+
+
+
+        // for app in items_list {
+        //     let z = ListItem::new(&app);
+        //     // new_items_list.push(z);
+        // }
+
+        let new_items_list: Vec<ListItem> = todo_list
+            .items
+            .iter()
+            .enumerate()
+            .map(|(i, todo_item)| {
+                let color = alternate_colors(i);
+                ListItem::from(todo_item).bg(color)
+            })
+            .collect();
+
+        let list = List::new(new_items_list)
+            .highlight_symbol(">")
+            .highlight_spacing(HighlightSpacing::Always);
+
+
+        StatefulWidget::render(list, area, buf, &mut todo_list.state);
+        // let new_items_list: Vec<ListItem> = items_list.iter()
+        //     .map(|todo_item| {
+        //         ListItem::from(todo_item)
+        //     })
+        //     .collect();
+
+
+        // for x in items_list {
+        //     let z = ListItem::from(x);
+        // }
+
         // println!("fuck");
         // returnlist;
         // frame.render_stateful_widget(list, area, &mut state);
-        //
+
+
+        // items.render(area, buf);
         // list.render(area, buf);
-        Paragraph::new("Tab1")
-            .block(self.block())
-            .render(area, buf);
+        // Paragraph::new("Tab1")
+        //     .block(self.block())
+        //     .render(area, buf);
+
+        // println!("{:#?}",todo_list);
+        // println!("{:#?}",items_list);
+
+        // use thread::sleep_ms;
+        // //
+        // println!("fuck");
+        // sleep_ms(100000000);
+        // Paragraph::new("test")
+        //     .block(self.block())
+        //     .fg(TEXT_FG_COLOR)
+        //     .wrap(Wrap { trim: false })
+        //     .render(area, buf);
+        // StatefulWidget::render(list, area, buf, &mut self.todo_list.state);
+        // Paragraph::new("Look! I'm different than others!")
+        //     .block(self.block())
+        //     .render(area, buf);
+        // let list = List::new(new_items_list)
+        //     .highlight_symbol(">")
+        //     .highlight_spacing(HighlightSpacing::Always);
+
+        //
+        // // We need to disambiguate this trait method as both `Widget` and `StatefulWidget` share the
+        // // same method name `render`.
+        // // StatefulWidget::render(list, area, buf, );
+        //
+        // Paragraph::new("Tab1")
+        //     .block(self.block())
+        //     .render(area, buf);
+
+
+
     }
 
     fn render_tab1(self, area: Rect, buf: &mut Buffer) {
@@ -371,15 +498,28 @@ impl From<&AppStruct> for ListItem<'_> {
         ListItem::new(line)
     }
 }
-//
-// impl From<&TodoItem> for ListItem<'_> {
-//     fn from(value: &TodoItem) -> Self {
-//         let line = match value.status {
-//             Status::Todo => Line::styled(format!(" ☐ {}", value.todo), TEXT_FG_COLOR),
-//             Status::Completed => {
-//                 Line::styled(format!(" ✓ {}", value.todo), COMPLETED_TEXT_FG_COLOR)
-//             }
-//         };
-//         ListItem::new(line)
-//     }
-// }
+
+impl From<&TodoItem> for ListItem<'_> {
+    fn from(value: &TodoItem) -> Self {
+        let line = match value.status {
+            Status::Todo => Line::styled(format!(" ☐ {}", value.todo), TEXT_FG_COLOR),
+            Status::Completed => {
+                Line::styled(format!(" ✓ {}", value.todo), COMPLETED_TEXT_FG_COLOR)
+            }
+        };
+        ListItem::new(line)
+    }
+}
+
+
+impl From<AppStruct> for ListItem<'_> {
+    fn from(value: AppStruct) -> Self {
+        let line = match value.enabled {
+            false => Line::styled(format!(" ☐ {}", value.repo_name), TEXT_FG_COLOR),
+            true => {
+                Line::styled(format!(" ✓ {}", value.repo_owner), COMPLETED_TEXT_FG_COLOR)
+            }
+        };
+        ListItem::new(line)
+    }
+}
