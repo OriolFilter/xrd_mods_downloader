@@ -332,7 +332,7 @@ fn render_title(area: Rect, buf: &mut Buffer) {
 fn render_footer(app: &App, area: Rect, buf: &mut Buffer) {
     match app.selected_tab {
         SelectedTab::Tab1 => {
-            Line::raw("Use ↓↑ to move | ◄ ► to change tab | S/s to save | Q/q to quit")
+            Line::raw("Use ↓↑ to move | ◄ ► to change tab | S/s to save | R/r to reload config | Q/q to quit")
                 .centered()
                 .render(area, buf);
         }
