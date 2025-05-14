@@ -59,7 +59,7 @@ impl Manager {
         Ok(())
     }
 
-    fn save_config(&mut self) -> std::io::Result<()>  {
+    pub fn save_config(&mut self) -> std::io::Result<()>  {
         let mut file = File::create(self.config.get_db_file_path())?;
 
         let config_string = serde_json::to_string(&self.config)?;

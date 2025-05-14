@@ -134,12 +134,20 @@ impl App {
                 match self.selected_tab {
                     SelectedTab::Tab1 => {
                         match key.code {
-                            // KeyCode::Right => self.next_tab(),
+                            // Tab specific
+
+                            KeyCode::Char('s') | KeyCode::Char('S') => { self.save_config() }
+                            KeyCode::Char('r') | KeyCode::Char('R')=> { self.reload_config() }
+
+                            // Movement
                             KeyCode::Enter => { self.enable_disable_mod()}
                             KeyCode::Up => { self.select_previous() }
                             KeyCode::Down => { self.select_next() }
+
+                            // Tab Movement
+
+                            // Others
                             KeyCode::Char('q') | KeyCode::Char('Q')| KeyCode::Esc => self.quit(),
-                            KeyCode::Char('s') => {},
                             _ => {}
                         }
                     }
@@ -188,6 +196,15 @@ impl App {
     // State
     pub fn quit(&mut self) {
         self.state = AppState::Quitting;
+    }
+
+    pub fn reload_config(&mut self) {
+        self.config_manager=Manager::default();
+        self.config_manager.load_config();
+    }
+
+    pub fn save_config(&mut self) {
+        self.config_manager.save_config();
     }
 
 
@@ -270,6 +287,7 @@ impl Widget for &mut App {
             _ => { println!("tab out of bounds!") }
         }
 
+        render_footer(self,footer_area,buf);
 
     }
 }
@@ -314,7 +332,7 @@ fn render_title(area: Rect, buf: &mut Buffer) {
 fn render_footer(app: &App, area: Rect, buf: &mut Buffer) {
     match app.selected_tab {
         SelectedTab::Tab1 => {
-            Line::raw("◄ ► to change tab | Press s to save | Press q to quit")
+            Line::raw("Use ↓↑ to move | ◄ ► to change tab | S/s to save | Q/q to quit")
                 .centered()
                 .render(area, buf);
         }
