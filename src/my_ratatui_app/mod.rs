@@ -324,10 +324,10 @@ impl SelectedTab {
         //     c+=1;
         // }
 
-        let mut todo_list = TodoList::from_iter([
-                (Status::Todo, "Rewrite everything with Rust!", "I can't hold my inner voice. He tells me to rewrite the complete universe with Rust"),
-                (Status::Completed, "Rewrite all of your tui apps with Ratatui", "Yes, you heard that right. Go and replace your tui with Ratatui."),
-        ]);
+        // let mut todo_list = TodoList::from_iter([
+        //         (Status::Todo, "Rewrite everything with Rust!", "I can't hold my inner voice. He tells me to rewrite the complete universe with Rust"),
+        //         (Status::Completed, "Rewrite all of your tui apps with Ratatui", "Yes, you heard that right. Go and replace your tui with Ratatui."),
+        // ]);
 
         // let items_list: Vec<ListItem> = todo_list
         //     .items
@@ -374,8 +374,7 @@ impl SelectedTab {
         //     // new_items_list.push(z);
         // }
 
-        let new_items_list: Vec<ListItem> = todo_list
-            .items
+        let new_items_list: Vec<ListItem> = items_list
             .iter()
             .enumerate()
             .map(|(i, todo_item)| {
@@ -389,7 +388,8 @@ impl SelectedTab {
             .highlight_spacing(HighlightSpacing::Always);
 
 
-        StatefulWidget::render(list, area, buf, &mut todo_list.state);
+        // StatefulWidget::render(list, area, buf, &mut items_list.state);
+        Widget::render(list, area, buf);
         // let new_items_list: Vec<ListItem> = items_list.iter()
         //     .map(|todo_item| {
         //         ListItem::from(todo_item)
