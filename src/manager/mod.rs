@@ -213,4 +213,10 @@ impl Manager {
             }
         }
     }
+
+    pub (crate) fn get_sorted_apps_string(&self) -> Vec<String> {
+        let mut app_list: Vec<String> = self.config.apps.iter().map(|(app_name,app)| {app.get_app_name()}).collect();
+        app_list.sort();
+        app_list
+    }
 }

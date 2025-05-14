@@ -135,7 +135,7 @@ impl App {
                     SelectedTab::Tab1 => {
                         match key.code {
                             // KeyCode::Right => self.next_tab(),
-                            // KeyCode::Left => self.previous_tab(),
+                            KeyCode::Enter => { self.enable_disable_mod()}
                             KeyCode::Up => { self.select_previous() }
                             KeyCode::Down => { self.select_next() }
                             KeyCode::Char('q') | KeyCode::Char('Q')| KeyCode::Esc => self.quit(),
@@ -184,9 +184,27 @@ impl App {
     //     self.selected_tab = self.selected_tab.previous();
     // }
 
+
     // State
     pub fn quit(&mut self) {
         self.state = AppState::Quitting;
+    }
+
+
+    // Tab 1
+    fn enable_disable_mod(&mut self) {
+        match self.list_state.selected() {
+            Some(index) => {
+                let app_list = self.config_manager.get_sorted_apps_string();
+                let app = self.config_manager.config.apps.get_mut(app_list.get(index).unwrap());
+                app.unwrap().enabled ^= true;
+            }
+            _ => {}
+        }
+
+
+        // use thread::sleep_ms;
+        // sleep_ms(111111111);
     }
 }
 
