@@ -352,7 +352,7 @@ impl AppStruct {
 
 
 
-#[derive(Serialize, Deserialize, Debug,Default)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct Config {
     #[serde(default)]
     pub(crate) apps: HashMap<String,AppStruct>,

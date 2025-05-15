@@ -22,6 +22,7 @@ use std::ops::BitOr;
 use downloader::Verification::Failed;
 use futures::Stream;
 use std::process::Command;
+// use itertools::Itertools;
 
 // Linux imports
 #[cfg(target_os = "linux")]
@@ -32,7 +33,7 @@ use std::os::unix::fs::PermissionsExt;
 // Get path from Windows registry
 use winreg::{RegKey,enums::*};
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Manager {
     pub(crate) config: Config
 }
@@ -56,6 +57,7 @@ impl Manager {
                 self.config = serde_json::from_str(&contents)?;
             }
         }
+
         Ok(())
     }
 
@@ -214,9 +216,35 @@ impl Manager {
         }
     }
 
-    pub (crate) fn get_sorted_apps_string(&self) -> Vec<String> {
-        let mut app_list: Vec<String> = self.config.apps.iter().map(|(app_name,app)| {app.get_app_name()}).collect();
-        app_list.sort();
-        app_list
+    pub (crate) fn get_sorted_apps_name(&self) -> Vec<String> {
+        // self.config.apps.keys().sorted().collect()
+        let mut apps_name_list: Vec<String> = self.config.apps.iter().map(|(app_name,app)| {app.get_app_name()}).collect();
+        apps_name_list.sort();
+        apps_name_list
     }
+    pub (crate) fn get_enabled_apps_name(&self) -> Vec<String> {
+        // self.config.apps.keys().sorted().collect()
+        // let mut apps_name_list: Vec<String> = self.config.apps.iter().map(|(app_name,app)| {app.get_app_name()}).collect();
+        // apps_name_list.sort();
+        // apps_name_list
+        let mut apps_name_list: Vec<String> = vec![];
+        for app in self.config.apps.values() {
+            if app.enabled {
+                apps_name_list.push(app.get_app_name());
+            }
+        }
+        apps_name_list.sort();
+        apps_name_list
+    }
+    // pub (crate) fn get_sorted_apps(&self) -> Vec<&AppStruct> {
+    //     // let mut app_list: Vec<String> = self.config.apps.iter().map(|(app_name,app)| {app.get_app_name()}).collect();
+    //     // app_list.sort();
+    //     let mut app_list: Vec<&AppStruct> = vec![];
+    //     for app_name in self.get_sorted_apps_name() {
+    //         let app = self.config.apps.get(&app_name).unwrap();
+    //         app_list.push(app);
+    //     }
+    //
+    //     app_list
+    // }
 }

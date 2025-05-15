@@ -14,9 +14,10 @@
 //! [examples readme]: https://github.com/ratatui/ratatui/blob/main/examples/README.md
 
 use std::collections::hash_map::Keys;
+use std::collections::HashMap;
 use std::net::ToSocketAddrs;
 use std::thread;
-use std::thread::sleep;
+use std::thread::{sleep, sleep_ms};
 use color_eyre::owo_colors::OwoColorize;
 use color_eyre::Result;
 use dirs::config_dir;
@@ -38,13 +39,14 @@ use ratatui::{
     Frame,
 };
 use ratatui::prelude::StatefulWidget;
-use ratatui::style::palette::tailwind::{GREEN, SLATE};
+use ratatui::style::palette::material::YELLOW;
+use ratatui::style::palette::tailwind::{GREEN, SLATE, STONE};
 use ratatui::widgets::{HighlightSpacing, ListItem, Wrap};
 use strum::{Display, EnumIter, FromRepr, IntoEnumIterator};
 
 use crate::manager::Manager;
 use crate::stuff;
-use crate::stuff::AppStruct;
+use crate::stuff::{AppStruct, TagInfo};
 
 
 //
@@ -70,19 +72,21 @@ enum Status {
 
 
 // Consts
-
 const NORMAL_ROW_BG: Color = SLATE.c950;
 const ALT_ROW_BG_COLOR: Color = SLATE.c900;
 const TEXT_FG_COLOR: Color = SLATE.c200;
 const COMPLETED_TEXT_FG_COLOR: Color = GREEN.c500;
+const GREYED_TEXT_FG_COLOR: Color = SLATE.c300;
+const YELLOWED_TEXT_FG_COLOR: Color = YELLOW.c200 ;
 
 #[derive(Default)]
 pub struct App {
     state: AppState,
     selected_tab: SelectedTab,
-    config_manager: Manager,
+    // config_manager: Manager, // Tabs shouldn't use this. Used to populate tabs/pivot point.
     app_struct_list_menu: AppStructListMenu,
-    list_state: ListState
+    active_tab_storage: TabStorage,
+    latest_tags_pulled_map: HashMap<String,TagInfo>
 }
 
 #[derive(Default, Clone, Copy, PartialEq, Eq)]
@@ -105,10 +109,41 @@ enum SelectedTab {
     Tab4,
 }
 
+// Goody two shoes struct
+#[derive(Default)]
+struct TabStorage {
+    config_manager: Manager,
+    // ordered_app_name_vector: Vec<String>,
+    // ordered_app_vector: Vec<AppStruct>,
+    list_state: ListState
+}
+
+impl TabStorage {
+    fn get_sorted_apps_name(&self) -> Vec<String>  {
+        // if self.ordered_app_name_vector.len() < 1 {
+        //     self.ordered_app_name_vector = self.config_manager.get_sorted_apps_name();
+        // }
+        // self.ordered_app_name_vector.to_owned()
+        self.config_manager.get_sorted_apps_name()
+    }
+
+    fn get_enabled_apps_name(&self) -> Vec<String>  {
+        self.config_manager.get_enabled_apps_name()
+        // if self.get_enabled_apps_name.len() < 1 {
+        //     self.get_enabled_apps_name = self.config_manager.get_enabled_apps_name();
+        // }
+        // self.get_enabled_apps_name.to_owned()
+
+    }
+}
+
+
 
 impl App {
     pub(crate) fn run(mut self, mut terminal: DefaultTerminal) -> Result<()> {
-        self.config_manager.load_config();
+        self.reload_config();
+        // self.config_manager.load_config();
+        // self.reset_active_tab_storage();
         // let mut widget_list_state = ListState::default();
 
         while self.state == AppState::Running {
@@ -136,7 +171,7 @@ impl App {
                             KeyCode::Char('r') | KeyCode::Char('R')=> { self.reload_config() }
 
                             // Movement
-                            KeyCode::Enter => { self.enable_disable_mod()}
+                            KeyCode::Enter => { self.toggle_enable_disable_mod()}
                             KeyCode::Up => { self.select_previous() }
                             KeyCode::Down => { self.select_next() }
 
@@ -152,10 +187,12 @@ impl App {
                     SelectedTab::Tab2 => {
                         match key.code {
                             // Tab specific
-                            KeyCode::Char('p') | KeyCode::Char('P') => { self.patch() }
+                            // KeyCode::Char('u') | KeyCode::Char('U')=> { self.download_patches() }
+                            KeyCode::Char('s') | KeyCode::Char('S')=> { self.pull_latest_tags() } // Only find the latest for each app
+                            // KeyCode::Char('p') | KeyCode::Char('P') => { self.patch() }
 
                             // Movement
-                            KeyCode::Enter => { self.enable_disable_mod()}
+                            // KeyCode::Enter => { self.toggle_enable_disable_mod()} // Update single one (or in the future open a new window to select the desired patch :shrug:)
                             KeyCode::Up => { self.select_previous() }
                             KeyCode::Down => { self.select_next() }
 
@@ -188,70 +225,86 @@ impl App {
     }
 
     fn select_next(&mut self) {
-        self.list_state.select_next();
+        self.active_tab_storage.list_state.select_next();
     }
     fn patch(&mut self) {
-        self.list_state.select_next();
+        self.active_tab_storage.list_state.select_next();
     }
     fn select_previous(&mut self) {
-        self.list_state.select_previous();
+        self.active_tab_storage.list_state.select_previous();
     }
 
     fn select_first(&mut self) {
-        self.list_state.select_first();
+        self.active_tab_storage.list_state.select_first();
     }
 
     fn select_last(&mut self) {
-        self.list_state.select_last();
+        self.active_tab_storage.list_state.select_last();
     }
 
     // Tabs
-    pub fn next_tab(&mut self) {
+    fn next_tab(&mut self) {
         let prev = self.selected_tab;
         self.selected_tab = self.selected_tab.next();
         if prev.to_string() != self.selected_tab.to_string() {
-            self.list_state = ListState::default();
-            self.config_manager.load_config();
+            self.reset_active_tab_storage();
+            // self.active_tab_storage.list_state = ListState::default();
+            // self.reload_config();
         }
     }
 
-    pub fn previous_tab(&mut self) {
+    fn previous_tab(&mut self) {
         let prev = self.selected_tab;
         self.selected_tab = self.selected_tab.previous();
         if prev.to_string() != self.selected_tab.to_string() {
-            self.list_state = ListState::default();
-            self.config_manager.load_config();
+            self.reset_active_tab_storage();
+            // self.active_tab_storage.list_state = ListState::default();
+            // self.config_manager.load_config();
         }
     }
 
-
     // State
-    pub fn quit(&mut self) {
+    fn reset_active_tab_storage(&mut self) {
+        self.active_tab_storage = TabStorage::default();
+        self.reload_config();
+        // self.reload_config();
+        // self.active_tab_storage.config_manager = self.config_manager.clone();
+    }
+
+    fn quit(&mut self) {
         self.state = AppState::Quitting;
     }
 
-    pub fn reload_config(&mut self) {
-        self.config_manager=Manager::default();
-        self.config_manager.load_config();
+    fn pull_latest_tags(&self) {
+        ;
+    }
+    fn reload_config(&mut self) {
+        // self.config_manager=Manager::default();
+        // self.config_manager.load_config();
+        // self.active_tab_storage = TabStorage::default();
+        // self.reload_config();
+        self.active_tab_storage.config_manager = Manager::default();
+        self.active_tab_storage.config_manager.load_config();
     }
 
-    pub fn save_config(&mut self) {
-        self.config_manager.save_config();
+    fn save_config(&mut self) {
+        self.active_tab_storage.config_manager.save_config();
     }
 
 
     // Tab 1
-    fn enable_disable_mod(&mut self) {
-        match self.list_state.selected() {
+    fn toggle_enable_disable_mod(&mut self) {
+        // println!("{:?}", self.tab_storage.list_state.selected());
+        // sleep_ms(1000000);
+        match self.active_tab_storage.list_state.selected() {
             Some(index) => {
-                let app_list = self.config_manager.get_sorted_apps_string();
-                let app = self.config_manager.config.apps.get_mut(app_list.get(index).unwrap());
-                app.unwrap().enabled ^= true;
+                let app_list = self.active_tab_storage.get_sorted_apps_name(); // self.config_manager.get_sorted_apps_name();
+                let app = self.active_tab_storage.config_manager.config.apps.get_mut(app_list.get(index).unwrap()).unwrap();
+                app.enabled ^= true;
+                // let app = self.active_tab_storage.get_sorted_apps_name();
             }
             _ => {}
         }
-
-
         // use thread::sleep_ms;
         // sleep_ms(111111111);
     }
@@ -315,32 +368,28 @@ impl Widget for &mut App {
 
 
         match self.selected_tab {
-            SelectedTab::Tab1 => self.selected_tab.enable_mods_tab(inner_area, buf, &self.config_manager, &mut self.list_state),
-            SelectedTab::Tab2 => self.selected_tab.update_mods_tab(inner_area, buf, &self.config_manager, &mut self.list_state),
+            SelectedTab::Tab1 => self.selected_tab.render_enable_mods_tab(inner_area, buf, &mut self.active_tab_storage),
+            SelectedTab::Tab2 => self.selected_tab.render_update_mods_tab(inner_area, buf, &mut self.active_tab_storage, &mut self.latest_tags_pulled_map),
             _ => {
                 //println!("tab out of bounds!")
             }
         }
-
         render_footer(self,footer_area,buf);
-
     }
 }
 
 
 impl SelectedTab {
 
-    fn enable_mods_tab(self, area: Rect, buffer: &mut Buffer, manager: &Manager, list_state: &mut ListState) {
-        let mut app_list: Vec<String> = manager.config.apps.iter().map(|(app_name,app)| {app.get_app_name()}).collect();
-        app_list.sort();
+    fn render_enable_mods_tab(self, area: Rect, buffer: &mut Buffer, tab_storage: &mut TabStorage) {
 
         let mut c=0;
         let mut styled_lines: Vec<ListItem> = vec![];
-        for app_name in app_list {
+        for app_name in tab_storage.get_sorted_apps_name() {
             let color = alternate_colors(c);
             c+=1;
 
-            let app= manager.config.apps.get(&app_name).unwrap();
+            let app= tab_storage.config_manager.config.apps.get(&app_name).unwrap();
 
             let line: Line = match app.enabled {
                 true => Line::styled(format!(" ✓ {}", app.get_app_name()), COMPLETED_TEXT_FG_COLOR),
@@ -355,25 +404,31 @@ impl SelectedTab {
             .highlight_symbol(">")
             .highlight_spacing(HighlightSpacing::Always);
 
-        StatefulWidget::render(list, area, buffer, list_state);
+        StatefulWidget::render(list, area, buffer, &mut tab_storage.list_state);
     }
 
-    fn update_mods_tab(self, area: Rect, buffer: &mut Buffer, manager: &Manager, list_state: &mut ListState) {
-        let mut app_list: Vec<String> = manager.config.apps.iter().map(|(app_name,app)| {app.get_app_name()}).collect();
-        app_list.sort();
+    fn render_update_mods_tab(self, area: Rect, buffer: &mut Buffer, tab_storage: &mut TabStorage, latest_tags_pulled_map: &mut HashMap<String,TagInfo>) {
 
         let mut c=0;
         let mut styled_lines: Vec<ListItem> = vec![];
-        for app_name in app_list {
+        for app_name in tab_storage.get_enabled_apps_name() {
             let color = alternate_colors(c);
-            c+=1;
 
-            let app= manager.config.apps.get(&app_name).unwrap();
+            let app= tab_storage.config_manager.config.apps.get(&app_name).unwrap();
             if app.enabled {
-                let line: Line = match app.enabled {
-                    true => Line::styled(format!(" ✓ {}", app.get_app_name()), COMPLETED_TEXT_FG_COLOR),
-                    false => Line::styled(format!(" ☐ {}", app.get_app_name()), TEXT_FG_COLOR)
+
+                // Latest patch downloaded
+                let line: Line = match latest_tags_pulled_map.get(&app.get_app_name()) {
+                    None => {Line::styled(format!(" ? {}", app.get_app_name()), GREYED_TEXT_FG_COLOR)}  // Need to fetch updates
+                    Some(value) => {
+                        // Differs with latest pulled
+                        match app.tag_name == value.tag_name {
+                            true => {Line::styled(format!(" ! {}", app.get_app_name()), YELLOWED_TEXT_FG_COLOR)} // "New" version found
+                            false => {Line::styled(format!(" ✓ {}", app.get_app_name()), COMPLETED_TEXT_FG_COLOR)} // Up to date
+                        }
+                    }
                 };
+                c+=1;
 
                 styled_lines.push(ListItem::new(line).bg(color));
             }
@@ -383,7 +438,7 @@ impl SelectedTab {
             .highlight_symbol(">")
             .highlight_spacing(HighlightSpacing::Always);
 
-        StatefulWidget::render(list, area, buffer, list_state);
+        StatefulWidget::render(list, area, buffer, &mut tab_storage.list_state);
     }
 }
 

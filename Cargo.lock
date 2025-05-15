@@ -2816,6 +2816,7 @@ dependencies = [
  "downloader",
  "futures",
  "inquire",
+ "itertools",
  "ratatui",
  "reqwest",
  "serde",
