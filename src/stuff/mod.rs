@@ -150,7 +150,7 @@ impl AppStruct {
                     assets_whitelist = vec!["GGXrdFasterLoadingTimes_linux".to_string()];
                 }
                 else {
-                    println!("Neither Linux or Windows detected, skipping tag {}",tag_info.tag_name);
+                    // println!("Neither Linux or Windows detected, skipping tag {}",tag_info.tag_name);
                 }
             }
             AppType::MirrorColorSelect => {
@@ -164,7 +164,7 @@ impl AppStruct {
                     assets_whitelist = vec!["GGXrdBackgroundGamepad_linux".to_string()];
                 }
                 else {
-                    println!("Neither Linux or Windows detected, skipping tag {}",tag_info.tag_name);
+                    // println!("Neither Linux or Windows detected, skipping tag {}",tag_info.tag_name);
                 }
             }
 

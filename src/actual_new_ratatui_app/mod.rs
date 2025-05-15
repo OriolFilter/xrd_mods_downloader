@@ -87,7 +87,7 @@ pub struct App {
     // config_manager: Manager, // Tabs shouldn't use this. Used to populate tabs/pivot point.
     app_struct_list_menu: AppStructListMenu,
     active_tab_storage: TabStorage,
-    latest_tags_pulled_map: HashMap<String,TagInfo>
+    latest_pulled_tags_hashmap: HashMap<String,TagInfo>
 }
 
 #[derive(Default, Clone, Copy, PartialEq, Eq)]
@@ -120,12 +120,12 @@ struct TabStorage {
 }
 
 impl TabStorage {
-    fn get_sorted_app_names(&self) -> Vec<String>  {
+    fn get_app_names(&self) -> Vec<String>  {
         // if self.ordered_app_name_vector.len() < 1 {
         //     self.ordered_app_name_vector = self.config_manager.get_sorted_apps_name();
         // }
         // self.ordered_app_name_vector.to_owned()
-        self.config_manager.get_sorted_app_names()
+        self.config_manager.get_app_names()
     }
 
     fn get_enabled_app_names(&self) -> Vec<String>  {
@@ -190,6 +190,7 @@ impl App {
                             // Tab specific
                             // KeyCode::Char('u') | KeyCode::Char('U')=> { self.download_patches() }
                             KeyCode::Char('s') | KeyCode::Char('S')=> { self.pull_latest_tags() } // Only find the latest for each app
+                            KeyCode::Char('u') | KeyCode::Char('U')=> { self.update_all_enabled_mods() } // Only find the latest for each app
                             // KeyCode::Char('p') | KeyCode::Char('P') => { self.patch() }
 
                             // Movement
@@ -276,13 +277,26 @@ impl App {
         self.state = AppState::Quitting;
     }
 
+    fn update_all_enabled_mods(&mut self) {
+        for app_name in self.active_tab_storage.get_enabled_app_names() {
+            // self.latest_pulled_tags_hashmap = 3;
+            match self.latest_pulled_tags_hashmap.get(&app_name) {
+                None => {}
+                Some(tag_info) => {
+                    self.active_tab_storage.config_manager.update_app(app_name, tag_info);
+                }
+            }
+        }
+        self.save_config() // TODO reenable, testing
+    }
+
     fn pull_latest_tags(&mut self) {
         // let mut tags_hashmap:HashMap<String, TagInfo> = HashMap::new();
         for app_name in self.active_tab_storage.get_enabled_app_names() {
             let result = self.active_tab_storage.config_manager.config.apps.get(&app_name).unwrap().get_latest_tag();
             match result {
                 Ok(new_tag) => {
-                    self.latest_tags_pulled_map.insert(app_name, new_tag);
+                    self.latest_pulled_tags_hashmap.insert(app_name, new_tag);
                 }
                 Err(e) => {
                     // println!("Error getting tag for app '{}': << {} >>", app_struct.get_app_name(), e);
@@ -312,7 +326,7 @@ impl App {
         // sleep_ms(1000000);
         match self.active_tab_storage.list_state.selected() {
             Some(index) => {
-                let app_list = self.active_tab_storage.get_sorted_app_names(); // self.config_manager.get_sorted_apps_name();
+                let app_list = self.active_tab_storage.get_app_names(); // self.config_manager.get_sorted_apps_name();
                 let app = self.active_tab_storage.config_manager.config.apps.get_mut(app_list.get(index).unwrap()).unwrap();
                 app.enabled ^= true;
                 // let app = self.active_tab_storage.get_sorted_apps_name();
@@ -383,7 +397,7 @@ impl Widget for &mut App {
 
         match self.selected_tab {
             SelectedTab::Tab1 => self.selected_tab.render_enable_mods_tab(inner_area, buf, &mut self.active_tab_storage),
-            SelectedTab::Tab2 => self.selected_tab.render_update_mods_tab(inner_area, buf, &mut self.active_tab_storage, &mut self.latest_tags_pulled_map),
+            SelectedTab::Tab2 => self.selected_tab.render_update_mods_tab(inner_area, buf, &mut self.active_tab_storage, &mut self.latest_pulled_tags_hashmap),
             _ => {
                 //println!("tab out of bounds!")
             }
@@ -399,7 +413,7 @@ impl SelectedTab {
 
         let mut c=0;
         let mut styled_lines: Vec<ListItem> = vec![];
-        for app_name in tab_storage.get_sorted_app_names() {
+        for app_name in tab_storage.get_app_names() {
             let color = alternate_colors(c);
             c+=1;
 
@@ -484,7 +498,8 @@ fn render_footer(app: &App, area: Rect, buf: &mut Buffer) {
                 .render(area, buf);
         }
         SelectedTab::Tab2 => {
-            Line::raw("Use ↓↑ to move | ◄ ► to change tab | s/D Search updates | R/r to reload config | Q/q to quit")
+            // | Enter to Update Selected
+            Line::raw("Use ↓↑ to move | ◄ ► to change tab | s/S Search Updates | a/A to update All | R/r to reload config | Q/q to quit")
                 .centered()
                 .render(area, buf);
         }

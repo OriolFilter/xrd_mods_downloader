@@ -86,12 +86,12 @@ pub fn download_file_to_path(file_url: String, destination_dir: String){
 
     match (is_present,is_dir) {
         (true,false) => {
-            println!("A file with the name '{}' already exists, proceeding with the deletion.",destination_file_path);
+            // println!("A file with the name '{}' already exists, proceeding with the deletion.",destination_file_path);
             fs::remove_file(destination_file_path);
         }
         (true,true) => {
             // Error won't delete a folder
-            println!("The file '{}' cannot be downloaded due to a directory having the exact same name.",destination_file_path);
+            // println!("The file '{}' cannot be downloaded due to a directory having the exact same name.",destination_file_path);
             exit(1);
         }
         _ => {}
@@ -112,7 +112,8 @@ pub fn download_file_to_path(file_url: String, destination_dir: String){
     let response = dl.download(&[file_to_download]).unwrap(); // other error handling
 
     response.iter().for_each(|v| match v {
-        Ok(v) => println!("Downloaded: {:?}", v),
+        Ok(v) => {}
+            // println!("Downloaded: {:?}", v),
         Err(e) => println!("Error: {:?}", e),
     });
 }

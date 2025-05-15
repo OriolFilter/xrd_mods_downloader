@@ -103,7 +103,7 @@ impl Manager {
         }
     }
 
-    fn update_app(&mut self, app_name: String, latest_tag_info: &TagInfo) {
+    pub(crate) fn update_app(&mut self, app_name: String, latest_tag_info: &TagInfo) {
         let db_dir_path = self.config.get_db_dir_path().to_string();
         let modpath_dir = &format!("{}/{}", db_dir_path, app_name);
         let mut is_dir:bool=Path::new(modpath_dir).is_dir();
@@ -112,11 +112,11 @@ impl Manager {
             true => {}
             false => {
                 if let Err(e) = create_dir_all(modpath_dir) {
-                    println!("Error: {}", e);
-                    println!("Error creating dir.\nExiting...");
+                    // println!("Error: {}", e);
+                    // println!("Error creating dir.\nExiting...");
                     exit(1);
                 }
-                println!("Created directory for the mod {} located at '{}'", app_name, modpath_dir)
+                // println!("Created directory for the mod {} located at '{}'", app_name, modpath_dir)
             }
         }
 
@@ -124,14 +124,16 @@ impl Manager {
 
         // App update (download new files)
         if app_to_update.tag_name == latest_tag_info.tag_name.to_string() {
-            println!("[✅ ] APP {} is up to date, skipping...", app_name);
+            // println!("[✅ ] APP {} is up to date, skipping...", app_name);
         } else {
-            println!("[⚠️ ] Updating '{}'", app_name);
+            // println!("[⚠️ ] Updating '{}'", app_name);
             match app_to_update.app_type {
                 AppType::HitboxOverlay | AppType::FasterLoadingTimes | AppType::WakeupTool | AppType::MirrorColorSelect | AppType::BackgroundGamepad  => {
                     app_to_update.download_mod(modpath_dir, latest_tag_info);
                 }
-                _ => {println!("[🚫] App '{}' of type {:?} doesn't have a update procedure. Skipping", app_name, app_to_update.app_type)}
+                _ => {
+                    // println!("[🚫] App '{}' of type {:?} doesn't have a update procedure. Skipping", app_name, app_to_update.app_type)
+                }
             }
         }
 
@@ -217,7 +219,7 @@ impl Manager {
         }
     }
 
-    pub (crate) fn get_sorted_app_names(&self) -> Vec<String> {
+    pub (crate) fn get_app_names(&self) -> Vec<String> {
         // self.config.apps.keys().sorted().collect()
         let mut apps_name_list: Vec<String> = self.config.apps.iter().map(|(app_name,app)| {app.get_app_name()}).collect();
         apps_name_list.sort();
