@@ -135,7 +135,6 @@ impl App {
                     SelectedTab::Tab1 => {
                         match key.code {
                             // Tab specific
-
                             KeyCode::Char('s') | KeyCode::Char('S') => { self.save_config() }
                             KeyCode::Char('r') | KeyCode::Char('R')=> { self.reload_config() }
 
@@ -145,6 +144,8 @@ impl App {
                             KeyCode::Down => { self.select_next() }
 
                             // Tab Movement
+                            KeyCode::Right => self.next_tab(),
+                            KeyCode::Left => self.previous_tab(),
 
                             // Others
                             KeyCode::Char('q') | KeyCode::Char('Q')| KeyCode::Esc => self.quit(),
@@ -156,9 +157,12 @@ impl App {
                     // SelectedTab::Tab4 => {}
                     _ => {
                         match key.code {
-                            // KeyCode::Right => self.next_tab(),
-                            // KeyCode::Left => self.previous_tab(),
-                            KeyCode::Char('q') | KeyCode::Char('Q') | KeyCode::Esc => self.quit(),
+                            // Tab Movement
+                            KeyCode::Right => self.next_tab(),
+                            KeyCode::Left => self.previous_tab(),
+
+                            // Others
+                            KeyCode::Char('q') | KeyCode::Char('Q')| KeyCode::Esc => self.quit(),
                             _ => {}
                         }
                     }
@@ -184,13 +188,21 @@ impl App {
     }
 
     // Tabs
-    // pub fn next_tab(&mut self) {
-    //     self.selected_tab = self.selected_tab.next();
-    // }
-    //
-    // pub fn previous_tab(&mut self) {
-    //     self.selected_tab = self.selected_tab.previous();
-    // }
+    pub fn next_tab(&mut self) {
+        let prev = self.selected_tab;
+        self.selected_tab = self.selected_tab.next();
+        if prev.to_string() != self.selected_tab.to_string() {
+            self.list_state = ListState::default();
+        }
+    }
+
+    pub fn previous_tab(&mut self) {
+        let prev = self.selected_tab;
+        self.selected_tab = self.selected_tab.previous();
+        if prev.to_string() != self.selected_tab.to_string() {
+            self.list_state = ListState::default();
+        }
+    }
 
 
     // State
@@ -323,6 +335,22 @@ impl SelectedTab {
         // println!()
     }
 
+}
+
+impl SelectedTab {
+    /// Get the previous tab, if there is no previous tab return the current tab.
+    fn previous(self) -> Self {
+        let current_index: usize = self as usize;
+        let previous_index = current_index.saturating_sub(1);
+        Self::from_repr(previous_index).unwrap_or(self)
+    }
+
+    /// Get the next tab, if there is no next tab return the current tab.
+    fn next(self) -> Self {
+        let current_index = self as usize;
+        let next_index = current_index.saturating_add(1);
+        Self::from_repr(next_index).unwrap_or(self)
+    }
 }
 
 fn render_title(area: Rect, buf: &mut Buffer) {
