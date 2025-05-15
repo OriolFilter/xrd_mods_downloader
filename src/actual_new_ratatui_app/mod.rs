@@ -364,15 +364,3 @@ impl From<&AppStruct> for ListItem<'_> {
         ListItem::new(line)
     }
 }
-
-impl From<AppStruct> for ListItem<'_> {
-    fn from(value: AppStruct) -> Self {
-        let line = match value.enabled {
-            false => Line::styled(format!(" ☐ {}", value.repo_name), TEXT_FG_COLOR),
-            true => {
-                Line::styled(format!(" ✓ {}", value.repo_owner), COMPLETED_TEXT_FG_COLOR)
-            }
-        };
-        ListItem::new(line)
-    }
-}
