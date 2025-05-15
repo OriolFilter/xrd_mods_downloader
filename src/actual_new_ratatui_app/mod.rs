@@ -16,6 +16,7 @@
 use std::collections::hash_map::Keys;
 use std::collections::HashMap;
 use std::net::ToSocketAddrs;
+use std::process::exit;
 use std::thread;
 use std::thread::{sleep, sleep_ms};
 use color_eyre::owo_colors::OwoColorize;
@@ -43,7 +44,7 @@ use ratatui::style::palette::material::YELLOW;
 use ratatui::style::palette::tailwind::{GREEN, SLATE, STONE};
 use ratatui::widgets::{HighlightSpacing, ListItem, Wrap};
 use strum::{Display, EnumIter, FromRepr, IntoEnumIterator};
-
+use crate::functions::print_different_versions;
 use crate::manager::Manager;
 use crate::stuff;
 use crate::stuff::{AppStruct, TagInfo};
@@ -119,16 +120,16 @@ struct TabStorage {
 }
 
 impl TabStorage {
-    fn get_sorted_apps_name(&self) -> Vec<String>  {
+    fn get_sorted_app_names(&self) -> Vec<String>  {
         // if self.ordered_app_name_vector.len() < 1 {
         //     self.ordered_app_name_vector = self.config_manager.get_sorted_apps_name();
         // }
         // self.ordered_app_name_vector.to_owned()
-        self.config_manager.get_sorted_apps_name()
+        self.config_manager.get_sorted_app_names()
     }
 
-    fn get_enabled_apps_name(&self) -> Vec<String>  {
-        self.config_manager.get_enabled_apps_name()
+    fn get_enabled_app_names(&self) -> Vec<String>  {
+        self.config_manager.get_enabled_app_names()
         // if self.get_enabled_apps_name.len() < 1 {
         //     self.get_enabled_apps_name = self.config_manager.get_enabled_apps_name();
         // }
@@ -275,8 +276,21 @@ impl App {
         self.state = AppState::Quitting;
     }
 
-    fn pull_latest_tags(&self) {
-        ;
+    fn pull_latest_tags(&mut self) {
+        // let mut tags_hashmap:HashMap<String, TagInfo> = HashMap::new();
+        for app_name in self.active_tab_storage.get_enabled_app_names() {
+            let result = self.active_tab_storage.config_manager.config.apps.get(&app_name).unwrap().get_latest_tag();
+            match result {
+                Ok(new_tag) => {
+                    self.latest_tags_pulled_map.insert(app_name, new_tag);
+                }
+                Err(e) => {
+                    // println!("Error getting tag for app '{}': << {} >>", app_struct.get_app_name(), e);
+                    // exit(1);
+                }
+            }
+        // self.latest_tags_pulled_map
+        }
     }
     fn reload_config(&mut self) {
         // self.config_manager=Manager::default();
@@ -298,7 +312,7 @@ impl App {
         // sleep_ms(1000000);
         match self.active_tab_storage.list_state.selected() {
             Some(index) => {
-                let app_list = self.active_tab_storage.get_sorted_apps_name(); // self.config_manager.get_sorted_apps_name();
+                let app_list = self.active_tab_storage.get_sorted_app_names(); // self.config_manager.get_sorted_apps_name();
                 let app = self.active_tab_storage.config_manager.config.apps.get_mut(app_list.get(index).unwrap()).unwrap();
                 app.enabled ^= true;
                 // let app = self.active_tab_storage.get_sorted_apps_name();
@@ -385,7 +399,7 @@ impl SelectedTab {
 
         let mut c=0;
         let mut styled_lines: Vec<ListItem> = vec![];
-        for app_name in tab_storage.get_sorted_apps_name() {
+        for app_name in tab_storage.get_sorted_app_names() {
             let color = alternate_colors(c);
             c+=1;
 
@@ -411,7 +425,7 @@ impl SelectedTab {
 
         let mut c=0;
         let mut styled_lines: Vec<ListItem> = vec![];
-        for app_name in tab_storage.get_enabled_apps_name() {
+        for app_name in tab_storage.get_enabled_app_names() {
             let color = alternate_colors(c);
 
             let app= tab_storage.config_manager.config.apps.get(&app_name).unwrap();
@@ -423,8 +437,8 @@ impl SelectedTab {
                     Some(value) => {
                         // Differs with latest pulled
                         match app.tag_name == value.tag_name {
-                            true => {Line::styled(format!(" ! {}", app.get_app_name()), YELLOWED_TEXT_FG_COLOR)} // "New" version found
-                            false => {Line::styled(format!(" ✓ {}", app.get_app_name()), COMPLETED_TEXT_FG_COLOR)} // Up to date
+                            true => {Line::styled(format!(" ✓ {}", app.get_app_name()), COMPLETED_TEXT_FG_COLOR)} // Up to date
+                            false => {Line::styled(format!(" ! {}", app.get_app_name()), YELLOWED_TEXT_FG_COLOR)} // "New" version found
                         }
                     }
                 };
@@ -465,12 +479,12 @@ fn render_title(area: Rect, buf: &mut Buffer) {
 fn render_footer(app: &App, area: Rect, buf: &mut Buffer) {
     match app.selected_tab {
         SelectedTab::Tab1 => {
-            Line::raw("Use ↓↑ to move | ◄ ► to change tab | S/s to save | R/r to reload config | Q/q to quit")
+            Line::raw("Use ↓↑ to move | ◄ ► to change tab | Enter to Select/Deselect | S/s to save | R/r to reload config | Q/q to quit")
                 .centered()
                 .render(area, buf);
         }
         SelectedTab::Tab2 => {
-            Line::raw("Use ↓↑ to move | ◄ ► to change tab | d/D Download/Update | R/r to reload config | Q/q to quit")
+            Line::raw("Use ↓↑ to move | ◄ ► to change tab | s/D Search updates | R/r to reload config | Q/q to quit")
                 .centered()
                 .render(area, buf);
         }

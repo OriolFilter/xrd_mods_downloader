@@ -70,6 +70,7 @@ impl Manager {
     }
 
     fn get_latest_tags_hash_map(&self) -> HashMap<String, TagInfo> {
+        // TODO remove
         let mut tags_hashmap:HashMap<String, TagInfo> =HashMap::new();
         for app_struct in self.config.apps.values() {
             let result = app_struct.get_latest_tag();
@@ -216,13 +217,13 @@ impl Manager {
         }
     }
 
-    pub (crate) fn get_sorted_apps_name(&self) -> Vec<String> {
+    pub (crate) fn get_sorted_app_names(&self) -> Vec<String> {
         // self.config.apps.keys().sorted().collect()
         let mut apps_name_list: Vec<String> = self.config.apps.iter().map(|(app_name,app)| {app.get_app_name()}).collect();
         apps_name_list.sort();
         apps_name_list
     }
-    pub (crate) fn get_enabled_apps_name(&self) -> Vec<String> {
+    pub (crate) fn get_enabled_app_names(&self) -> Vec<String> {
         // self.config.apps.keys().sorted().collect()
         // let mut apps_name_list: Vec<String> = self.config.apps.iter().map(|(app_name,app)| {app.get_app_name()}).collect();
         // apps_name_list.sort();
