@@ -97,7 +97,7 @@ enum SelectedTab {
     #[default]
     #[strum(to_string = "Manage Mods")]
     Tab1,
-    #[strum(to_string = "Tab 2")]
+    #[strum(to_string = "Download/Update mods")]
     Tab2,
     #[strum(to_string = "Patch Mods")]
     Tab3,
@@ -121,10 +121,7 @@ impl App {
             // for x in terminal.draw() {}
 
             self.handle_events()?;
-
-
         }
-
         Ok(())
     }
 
@@ -152,7 +149,25 @@ impl App {
                             _ => {}
                         }
                     }
-                    // SelectedTab::Tab2 => {}
+                    SelectedTab::Tab2 => {
+                        match key.code {
+                            // Tab specific
+                            KeyCode::Char('p') | KeyCode::Char('P') => { self.patch() }
+
+                            // Movement
+                            KeyCode::Enter => { self.enable_disable_mod()}
+                            KeyCode::Up => { self.select_previous() }
+                            KeyCode::Down => { self.select_next() }
+
+                            // Tab Movement
+                            KeyCode::Right => self.next_tab(),
+                            KeyCode::Left => self.previous_tab(),
+
+                            // Others
+                            KeyCode::Char('q') | KeyCode::Char('Q')| KeyCode::Esc => self.quit(),
+                            _ => {}
+                        }
+                    }
                     // SelectedTab::Tab3 => {}
                     // SelectedTab::Tab4 => {}
                     _ => {
@@ -175,6 +190,9 @@ impl App {
     fn select_next(&mut self) {
         self.list_state.select_next();
     }
+    fn patch(&mut self) {
+        self.list_state.select_next();
+    }
     fn select_previous(&mut self) {
         self.list_state.select_previous();
     }
@@ -193,6 +211,7 @@ impl App {
         self.selected_tab = self.selected_tab.next();
         if prev.to_string() != self.selected_tab.to_string() {
             self.list_state = ListState::default();
+            self.config_manager.load_config();
         }
     }
 
@@ -201,6 +220,7 @@ impl App {
         self.selected_tab = self.selected_tab.previous();
         if prev.to_string() != self.selected_tab.to_string() {
             self.list_state = ListState::default();
+            self.config_manager.load_config();
         }
     }
 
@@ -296,7 +316,10 @@ impl Widget for &mut App {
 
         match self.selected_tab {
             SelectedTab::Tab1 => self.selected_tab.enable_mods_tab(inner_area, buf, &self.config_manager, &mut self.list_state),
-            _ => { println!("tab out of bounds!") }
+            SelectedTab::Tab2 => self.selected_tab.update_mods_tab(inner_area, buf, &self.config_manager, &mut self.list_state),
+            _ => {
+                //println!("tab out of bounds!")
+            }
         }
 
         render_footer(self,footer_area,buf);
@@ -308,33 +331,60 @@ impl Widget for &mut App {
 impl SelectedTab {
 
     fn enable_mods_tab(self, area: Rect, buffer: &mut Buffer, manager: &Manager, list_state: &mut ListState) {
-        // let mut app_list: Vec<String> = vec![];
-        // for app in manager.config.apps.keys() {
-        //     app_list.push(app.to_string());
-        // }
         let mut app_list: Vec<String> = manager.config.apps.iter().map(|(app_name,app)| {app.get_app_name()}).collect();
         app_list.sort();
 
         let mut c=0;
-        let items_list: Vec<ListItem> = app_list
-            .iter()
-            .map(|app_name| {
-                let color = alternate_colors(c);
-                c+=1;
-                ListItem::from(manager.config.apps.get(app_name).unwrap()).bg(color)
-            })
-            .collect();
+        let mut styled_lines: Vec<ListItem> = vec![];
+        for app_name in app_list {
+            let color = alternate_colors(c);
+            c+=1;
 
-        let list = List::new(items_list)
+            let app= manager.config.apps.get(&app_name).unwrap();
+
+            let line: Line = match app.enabled {
+                true => Line::styled(format!(" ✓ {}", app.get_app_name()), COMPLETED_TEXT_FG_COLOR),
+                false => Line::styled(format!(" ☐ {}", app.get_app_name()), TEXT_FG_COLOR)
+            };
+
+            styled_lines.push(ListItem::new(line).bg(color));
+            // styled_line.push(ListItem::from(manager.config.apps.get(&app_name).unwrap()).bg(color));
+        }
+
+        let list = List::new(styled_lines)
             .highlight_symbol(">")
             .highlight_spacing(HighlightSpacing::Always);
 
-
         StatefulWidget::render(list, area, buffer, list_state);
-        // Widget::render(list, area, buffer);
-        // println!()
     }
 
+    fn update_mods_tab(self, area: Rect, buffer: &mut Buffer, manager: &Manager, list_state: &mut ListState) {
+        let mut app_list: Vec<String> = manager.config.apps.iter().map(|(app_name,app)| {app.get_app_name()}).collect();
+        app_list.sort();
+
+        let mut c=0;
+        let mut styled_lines: Vec<ListItem> = vec![];
+        for app_name in app_list {
+            let color = alternate_colors(c);
+            c+=1;
+
+            let app= manager.config.apps.get(&app_name).unwrap();
+            if app.enabled {
+                let line: Line = match app.enabled {
+                    true => Line::styled(format!(" ✓ {}", app.get_app_name()), COMPLETED_TEXT_FG_COLOR),
+                    false => Line::styled(format!(" ☐ {}", app.get_app_name()), TEXT_FG_COLOR)
+                };
+
+                styled_lines.push(ListItem::new(line).bg(color));
+            }
+        }
+
+        let list = List::new(styled_lines)
+            .highlight_symbol(">")
+            .highlight_spacing(HighlightSpacing::Always);
+
+        StatefulWidget::render(list, area, buffer, list_state);
+    }
 }
 
 impl SelectedTab {
@@ -364,6 +414,11 @@ fn render_footer(app: &App, area: Rect, buf: &mut Buffer) {
                 .centered()
                 .render(area, buf);
         }
+        SelectedTab::Tab2 => {
+            Line::raw("Use ↓↑ to move | ◄ ► to change tab | d/D Download/Update | R/r to reload config | Q/q to quit")
+                .centered()
+                .render(area, buf);
+        }
         // SelectedTab::Tab2 => {}
         // SelectedTab::Tab3 => {}
         // SelectedTab::Tab4 => {}
@@ -383,12 +438,12 @@ const fn alternate_colors(i: usize) -> Color {
     }
 }
 
-impl From<&AppStruct> for ListItem<'_> {
-    fn from(app: &AppStruct) -> Self {
-        let line = match app.enabled {
-            true => Line::styled(format!(" ✓ {}", app.get_app_name()), COMPLETED_TEXT_FG_COLOR),
-            false => Line::styled(format!(" ☐ {}", app.get_app_name()), TEXT_FG_COLOR)
-        };
-        ListItem::new(line)
-    }
-}
+// impl From<&AppStruct> for ListItem<'_> {
+//     fn from(app: &AppStruct) -> Self {
+//         let line = match app.enabled {
+//             true => Line::styled(format!(" ✓ {}", app.get_app_name()), COMPLETED_TEXT_FG_COLOR),
+//             false => Line::styled(format!(" ☐ {}", app.get_app_name()), TEXT_FG_COLOR)
+//         };
+//         ListItem::new(line)
+//     }
+// }
