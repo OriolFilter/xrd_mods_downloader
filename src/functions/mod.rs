@@ -146,5 +146,5 @@ pub fn unzip_file(zip_file_path: String, unzip_dir:String){
         }
     }
 
-    println!("File '{}' extracted to '{}'",zip_file_path,unzip_dir);
+    // println!("File '{}' extracted to '{}'",zip_file_path,unzip_dir);
 }

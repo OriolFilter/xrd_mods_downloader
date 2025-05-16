@@ -28,7 +28,7 @@ use ratatui::{
     layout::{Constraint, Layout, Rect},
     style::{palette::tailwind, Color, Stylize},
     symbols,
-    text::Line,
+    text::{Line, Text},
     widgets::{Block, Padding, Paragraph, Tabs, Widget},
     DefaultTerminal,
 };
@@ -49,27 +49,33 @@ use crate::manager::Manager;
 use crate::stuff;
 use crate::stuff::{AppStruct, TagInfo};
 
+use derive_setters::Setters;
+use lipsum::lipsum;
+use ratatui::{
+    backend::CrosstermBackend,
+    crossterm::{
+        terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+        ExecutableCommand,
+    },
+    widgets::{Borders, Clear},
+    Terminal,
+};
 
-//
+
+#[derive(Default)]
+enum SubMenus {
+    #[default]
+    None,
+    UpdateSingleApps,
+    UpdateAllApps,
+}
+
 
 #[derive(Default)]
 struct AppStructListMenu {
     apps: Vec<AppStruct>,
     state: ListState
 }
-
-#[derive(Debug)]
-struct TodoItem {
-    todo: String,
-    info: String,
-    status: Status,
-}
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-enum Status {
-    Todo,
-    Completed,
-}
-
 
 
 // Consts
@@ -84,6 +90,7 @@ const YELLOWED_TEXT_FG_COLOR: Color = YELLOW.c200 ;
 pub struct App {
     state: AppState,
     selected_tab: SelectedTab,
+    current_sub_menu: SubMenus,
     // config_manager: Manager, // Tabs shouldn't use this. Used to populate tabs/pivot point.
     app_struct_list_menu: AppStructListMenu,
     active_tab_storage: TabStorage,
@@ -141,8 +148,10 @@ impl TabStorage {
 
 
 impl App {
-    pub(crate) fn run(mut self, mut terminal: DefaultTerminal) -> Result<()> {
+    pub(crate) fn run(mut self, terminal:  &mut DefaultTerminal) -> Result<()> {
+    // pub(crate) fn run(mut self, mut terminal: DefaultTerminal) -> Result<()> {
         self.reload_config();
+        // let x =  terminal;
         // self.config_manager.load_config();
         // self.reset_active_tab_storage();
         // let mut widget_list_state = ListState::default();
@@ -156,12 +165,16 @@ impl App {
             // for ter
             // for x in terminal.draw() {}
 
+            // self.handle_events()?;
             self.handle_events()?;
+            // self.handle_events(terminal)?;
         }
         Ok(())
     }
 
+    // fn handle_events(&mut self) -> std::io::Result<()> {
     fn handle_events(&mut self) -> std::io::Result<()> {
+    // fn handle_events(&mut self, terminal: &mut DefaultTerminal) -> std::io::Result<()> {
         if let Event::Key(key) = event::read()? {
             if key.kind == KeyEventKind::Press {
                 match self.selected_tab {
@@ -190,7 +203,11 @@ impl App {
                             // Tab specific
                             // KeyCode::Char('u') | KeyCode::Char('U')=> { self.download_patches() }
                             KeyCode::Char('s') | KeyCode::Char('S')=> { self.pull_latest_tags() } // Only find the latest for each app
+                            // KeyCode::Char('u') | KeyCode::Char('U')=> { terminal.draw(update_app)?;     sleep_ms(10000000); } // Only find the latest for each app
                             KeyCode::Char('u') | KeyCode::Char('U')=> { self.update_all_enabled_mods() } // Only find the latest for each app
+                            // KeyCode::Char('u') | KeyCode::Char('U')=> { self.update_all_enabled_mods(terminal) } // Only find the latest for each app
+                            // KeyCode::Char('u') | KeyCode::Char('U')=> { terminal.draw(self.update_all_enabled_mods)?; sleep_ms(100000); } // Only find the latest for each app
+                            // KeyCode::Char('u') | KeyCode::Char('U')=> { self.update_all_enabled_mods(terminal) } // Only find the latest for each app
                             // KeyCode::Char('p') | KeyCode::Char('P') => { self.patch() }
 
                             // Movement
@@ -277,17 +294,97 @@ impl App {
         self.state = AppState::Quitting;
     }
 
-    fn update_all_enabled_mods(&mut self) {
-        for app_name in self.active_tab_storage.get_enabled_app_names() {
-            // self.latest_pulled_tags_hashmap = 3;
-            match self.latest_pulled_tags_hashmap.get(&app_name) {
-                None => {}
-                Some(tag_info) => {
-                    self.active_tab_storage.config_manager.update_app(app_name, tag_info);
-                }
+
+    fn download_mod(&mut self, app_name: String) {
+
+
+
+        match self.latest_pulled_tags_hashmap.get(&app_name) {
+            None => {}
+            Some(tag_info) => {
+                self.active_tab_storage.config_manager.update_app(app_name, tag_info);
             }
         }
-        self.save_config() // TODO reenable, testing
+    }
+
+    fn update_all_enabled_mods(&mut self) {
+    // fn update_all_enabled_mods(&mut self, frame: &mut Frame) {
+    // fn update_all_enabled_mods(&mut self, terminal: &mut DefaultTerminal) {
+        // terminal.draw(self.)
+        // // terminal.clear();
+        // let mut frame = terminal.get_frame();
+        //
+        // // terminal.draw(|frame|
+        // //                   frame.render_widget(&mut self, frame.area())
+        // //               // frame.render_stateful_widget(&mut self, frame.area(), &mut widget_list_state)
+        // //               // frame.render_stateful_widget(&self, frame.area(), &mut widged_state)
+        // // )?;
+        // // // for
+        // //
+        //
+        // let area = frame.area();
+        // let popup_area = Rect {
+        //     x: area.width / 4,
+        //     y: area.height / 3,
+        //     width: area.width / 2,
+        //     height: area.height / 3,
+        // };
+        //
+        // use Constraint::{Length, Min};
+        // let vertical = Layout::vertical([Length(1), Min(0), Length(1)]);
+        // let [header_area, inner_area, footer_area] = vertical.areas(area);
+        // let horizontal = Layout::horizontal([Min(0), Length(20)]);
+        // let [tabs_area, title_area] = horizontal.areas(header_area);
+        // //
+        // //
+        // // //
+        // // let popup = Popup::default()
+        // //     .content("Hello world!")
+        // //     .style(Style::new().yellow())
+        // //     .title("With Clear")
+        // //     .title_style(Style::new().white().bold())
+        // //     .border_style(Style::new().red());
+        // //
+        // // frame.render_widget(popup, popup_area);
+        //
+        // let mut lines = vec![];
+        // lines.push(Line::styled(format!(" hiiii "), COMPLETED_TEXT_FG_COLOR));
+        // lines.push(Line::styled(format!(" hiiii "), COMPLETED_TEXT_FG_COLOR));
+        // lines.push(Line::styled(format!(" hiiii "), COMPLETED_TEXT_FG_COLOR));
+        // lines.push(Line::styled(format!(" hiiii "), COMPLETED_TEXT_FG_COLOR));
+        // lines.push(Line::styled(format!(" hiiii "), COMPLETED_TEXT_FG_COLOR));
+        // lines.push(Line::styled(format!(" hiiii "), COMPLETED_TEXT_FG_COLOR));
+        //
+        // // frame.render_widget(popup, popup_area);
+        // let list = List::new(lines)
+        //     .highlight_symbol(">")
+        //     .highlight_spacing(HighlightSpacing::Always);
+        //
+        // frame.render_widget(list, area);
+        //
+        //
+        // println!("HIIII");
+        // println!("HIIII");
+        // println!("HIIII");
+        // println!("HIIII");
+        // println!("HIIII");
+        //
+        //
+
+
+
+
+
+
+
+
+
+        // for app_name in self.active_tab_storage.get_enabled_app_names() {
+            // self.latest_pulled_tags_hashmap = 3;
+           // self.download_mod(app_name);
+        // }
+        // self.save_config() // TODO reenable, testing
+        self.current_sub_menu=SubMenus::UpdateAllApps;
     }
 
     fn pull_latest_tags(&mut self) {
@@ -383,26 +480,37 @@ impl SelectedTab {
 impl Widget for &mut App {
     // fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        // Get range and thingies.
-        use Constraint::{Length, Min};
-        let vertical = Layout::vertical([Length(1), Min(0), Length(1)]);
-        let [header_area, inner_area, footer_area] = vertical.areas(area);
 
-        let horizontal = Layout::horizontal([Min(0), Length(20)]);
-        let [tabs_area, title_area] = horizontal.areas(header_area);
-
-        render_title(title_area, buf);
-        self.render_tabs(tabs_area, buf);
+        match self.current_sub_menu {
+            SubMenus::UpdateSingleApps|SubMenus::UpdateAllApps => {
+                // Pop Up Style
 
 
-        match self.selected_tab {
-            SelectedTab::Tab1 => self.selected_tab.render_enable_mods_tab(inner_area, buf, &mut self.active_tab_storage),
-            SelectedTab::Tab2 => self.selected_tab.render_update_mods_tab(inner_area, buf, &mut self.active_tab_storage, &mut self.latest_pulled_tags_hashmap),
-            _ => {
-                //println!("tab out of bounds!")
+                self.current_sub_menu=SubMenus::None; // Cleanup
+            }
+            SubMenus::None => {
+                // Get range and thingies.
+                use Constraint::{Length, Min};
+                let vertical = Layout::vertical([Length(1), Min(0), Length(1)]);
+                let [header_area, inner_area, footer_area] = vertical.areas(area);
+                let horizontal = Layout::horizontal([Min(0), Length(20)]);
+                let [tabs_area, title_area] = horizontal.areas(header_area);
+
+                render_title(title_area, buf);
+                self.render_tabs(tabs_area, buf);
+
+
+                match self.selected_tab {
+                    SelectedTab::Tab1 => self.selected_tab.render_enable_mods_tab(inner_area, buf, &mut self.active_tab_storage),
+                    SelectedTab::Tab2 => self.selected_tab.render_update_mods_tab(inner_area, buf, &mut self.active_tab_storage, &mut self.latest_pulled_tags_hashmap),
+                    _ => {
+                        //println!("tab out of bounds!")
+                    }
+                }
+                render_footer(self,footer_area,buf);
             }
         }
-        render_footer(self,footer_area,buf);
+
     }
 }
 
@@ -499,7 +607,7 @@ fn render_footer(app: &App, area: Rect, buf: &mut Buffer) {
         }
         SelectedTab::Tab2 => {
             // | Enter to Update Selected
-            Line::raw("Use ↓↑ to move | ◄ ► to change tab | s/S Search Updates | a/A to update All | R/r to reload config | Q/q to quit")
+            Line::raw("Use ↓↑ to move | ◄ ► to change tab | s/S Search Updates | u/U to update All | R/r to reload config | Q/q to quit")
                 .centered()
                 .render(area, buf);
         }
