@@ -295,17 +295,9 @@ impl App {
     }
 
 
-    fn download_mod(&mut self, app_name: String) {
-
-
-
-        match self.latest_pulled_tags_hashmap.get(&app_name) {
-            None => {}
-            Some(tag_info) => {
-                self.active_tab_storage.config_manager.update_app(app_name, tag_info);
-            }
-        }
-    }
+    // fn download_mod(&mut self, app_name: String) {
+    //
+    // }
 
     fn update_all_enabled_mods(&mut self) {
     // fn update_all_enabled_mods(&mut self, frame: &mut Frame) {
@@ -480,11 +472,34 @@ impl SelectedTab {
 impl Widget for &mut App {
     // fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
     fn render(self, area: Rect, buf: &mut Buffer) {
-
         match self.current_sub_menu {
             SubMenus::UpdateSingleApps|SubMenus::UpdateAllApps => {
-                // Pop Up Style
+                // Pop Up Style (idk how yet)
+                let mut app_name_list: Vec<String> = vec![];
+                match self.current_sub_menu {
+                    SubMenus::None => {} //Pass
+                    SubMenus::UpdateSingleApps => {
+                        match self.active_tab_storage.list_state.selected() {
+                            Some(index) => {
+                                let app_list = self.active_tab_storage.get_enabled_app_names();
+                                app_name_list.push(app_list.get(index).unwrap().to_string());
+                            }
+                            _ => {}
+                        }
+                    }
+                    SubMenus::UpdateAllApps => {
+                        self.active_tab_storage.get_enabled_app_names();
+                    }
+                }
 
+                for app_name in app_name_list {
+                    match self.latest_pulled_tags_hashmap.get(&app_name) {
+                        Some(tag_info) => {
+                            self.active_tab_storage.config_manager.update_app(app_name, tag_info);
+                        }
+                        None => {}
+                    }
+                }
 
                 self.current_sub_menu=SubMenus::None; // Cleanup
             }
