@@ -208,15 +208,15 @@ impl App {
             // for x in terminal.draw() {}
 
             // self.handle_events()?;
-            self.handle_events()?;
-            // self.handle_events(terminal)?;
+            // self.handle_events()?;
+            self.handle_events(terminal)?;
         }
         Ok(())
     }
 
     // fn handle_events(&mut self) -> std::io::Result<()> {
-    fn handle_events(&mut self) -> std::io::Result<()> {
-    // fn handle_events(&mut self, terminal: &mut DefaultTerminal) -> std::io::Result<()> {
+    // fn handle_events(&mut self) -> std::io::Result<()> {
+    fn handle_events(&mut self, terminal: &mut DefaultTerminal) -> std::io::Result<()> {
         if let Event::Key(key) = event::read()? {
             if key.kind == KeyEventKind::Press {
                 match self.selected_tab {
@@ -246,6 +246,7 @@ impl App {
                             // KeyCode::Char('u') | KeyCode::Char('U')=> { self.download_patches() }
                             KeyCode::Char('s') | KeyCode::Char('S')=> { self.pull_latest_tags() } // Only find the latest for each app
                             // KeyCode::Char('u') | KeyCode::Char('U')=> { terminal.draw(update_app)?;     sleep_ms(10000000); } // Only find the latest for each app
+                            // KeyCode::Char('u') | KeyCode::Char('U')=> { self.test_popup(terminal) } // Only find the latest for each app
                             KeyCode::Char('u') | KeyCode::Char('U')=> { self.update_all_enabled_mods() } // Only find the latest for each app
                             // KeyCode::Char('u') | KeyCode::Char('U')=> { self.update_all_enabled_mods(terminal) } // Only find the latest for each app
                             // KeyCode::Char('u') | KeyCode::Char('U')=> { terminal.draw(self.update_all_enabled_mods)?; sleep_ms(100000); } // Only find the latest for each app
@@ -341,6 +342,15 @@ impl App {
     //
     // }
 
+    fn test_popup(&mut self, terminal: &mut DefaultTerminal) {
+        // terminal.d
+        // println!("Test popup!");
+        // println!("Test popup!");
+        // println!("Test popup!");
+        // println!("Test popup!");
+        // println!("Test popup!");
+        // sleep_ms(10000000);
+    }
     fn update_all_enabled_mods(&mut self) {
     // fn update_all_enabled_mods(&mut self, frame: &mut Frame) {
     // fn update_all_enabled_mods(&mut self, terminal: &mut DefaultTerminal) {
@@ -516,6 +526,12 @@ impl Widget for &mut App {
     fn render(self, area: Rect, buf: &mut Buffer) {
         match self.current_sub_menu {
             SubMenus::UpdateSingleApps|SubMenus::UpdateAllApps => {
+                // Widget::render(Paragraph::new("HIIII\nHIIII\nHIIII\nHIIII\nHIIII\n"), popup_area,buf);
+
+                // sleep_ms(10000);
+
+
+
                 // Pop Up Style (idk how yet)
                 // let mut app_name_list: Vec<String> = vec![];
                 // match self.current_sub_menu {
@@ -542,10 +558,31 @@ impl Widget for &mut App {
                 //         None => {}
                 //     }
                 // }
-                println!("HIII");
+
+                // take up a third of the screen vertically and half horizontally
+                let popup_area = Rect {
+                    x: area.width / 4,
+                    y: area.height / 3,
+                    width: area.width / 2,
+                    height: area.height / 3,
+                };
+                Clear.render(popup_area, buf);
+
+                let bad_popup = Paragraph::new("Hello world!")
+                    .wrap(Wrap { trim: true })
+                    .style(Style::new().yellow())
+                    .block(
+                        Block::new()
+                            .title("Without Clear")
+                            .title_style(Style::new().white().bold())
+                            .borders(Borders::ALL)
+                            .border_style(Style::new().red()),
+                    );
+                Widget::render(bad_popup, popup_area, buf);
+
 
                 self.current_sub_menu=SubMenus::None; // Cleanup
-                self.save_config();
+                // self.save_config();
             }
             SubMenus::None => {
                 // Get range and thingies.
@@ -574,6 +611,30 @@ impl Widget for &mut App {
                     }
                 }
                 render_footer(self,footer_area,buf);
+
+                // // take up a third of the screen vertically and half horizontally
+                // let popup_area = Rect {
+                //     x: area.width / 4,
+                //     y: area.height / 3,
+                //     width: area.width / 2,
+                //     height: area.height / 3,
+                // };
+                // Clear.render(popup_area, buf);
+                //
+                // let bad_popup = Paragraph::new("Hello world!")
+                //     .wrap(Wrap { trim: true })
+                //     .style(Style::new().yellow())
+                //     .block(
+                //         Block::new()
+                //             .title("Without Clear")
+                //             .title_style(Style::new().white().bold())
+                //             .borders(Borders::ALL)
+                //             .border_style(Style::new().red()),
+                //     );
+                // Widget::render(bad_popup, popup_area, buf);
+
+
+                // println!("HIII");
             }
         }
 
@@ -624,7 +685,7 @@ impl SelectedTab {
                     None => {Line::styled(format!(" ? {}", app.get_app_name()), GREYED_TEXT_FG_COLOR)}  // Need to fetch updates
                     Some(value) => {
                         // Differs with latest pulled
-                        match app.tag_name == value.tag_name {
+                        match app.tag_name == value.tag_name && !app.tag_name.is_empty() {
                             true => {Line::styled(format!(" ✓ {}", app.get_app_name()), COMPLETED_TEXT_FG_COLOR)} // Up to date
                             false => {Line::styled(format!(" ! {}", app.get_app_name()), YELLOWED_TEXT_FG_COLOR)} // "New" version found
                         }
