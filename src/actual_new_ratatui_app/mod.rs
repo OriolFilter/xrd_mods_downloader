@@ -524,41 +524,97 @@ impl SelectedTab {
 impl Widget for &mut App {
     // fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        match self.current_sub_menu {
+        // match self.current_sub_menu {
+        //     SubMenus::UpdateSingleApps|SubMenus::UpdateAllApps => {
+        //         // Widget::render(Paragraph::new("HIIII\nHIIII\nHIIII\nHIIII\nHIIII\n"), popup_area,buf);
+        //
+        //         // sleep_ms(10000);
+        //
+        //
+        //
+        //         // Pop Up Style (idk how yet)
+        //         // let mut app_name_list: Vec<String> = vec![];
+        //         // match self.current_sub_menu {
+        //         //     SubMenus::None => {} //Pass
+        //         //     SubMenus::UpdateSingleApps => {
+        //         //         match self.active_tab_storage.list_state.selected() {
+        //         //             Some(index) => {
+        //         //                 let app_list = self.active_tab_storage.get_enabled_app_names();
+        //         //                 app_name_list.push(app_list.get(index).unwrap().to_string());
+        //         //             }
+        //         //             _ => {}
+        //         //         }
+        //         //     }
+        //         //     SubMenus::UpdateAllApps => {
+        //         //         self.active_tab_storage.get_enabled_app_names();
+        //         //     }
+        //         // }
+        //         //
+        //         // for app_name in app_name_list {
+        //         //     match self.latest_pulled_tags_hashmap.get("kkots/rev2-wakeup-tool") {
+        //         //         Some(tag_info) => {
+        //         //             self.active_tab_storage.config_manager.update_app("kkots/rev2-wakeup-tool".to_string(), tag_info);
+        //         //         }
+        //         //         None => {}
+        //         //     }
+        //         // }
+        //
+        //         // take up a third of the screen vertically and half horizontally
+        //         let popup_area = Rect {
+        //             x: area.width / 4,
+        //             y: area.height / 3,
+        //             width: area.width / 2,
+        //             height: area.height / 3,
+        //         };
+        //         Clear.render(popup_area, buf);
+        //
+        //         let bad_popup = Paragraph::new("Hello world!")
+        //             .wrap(Wrap { trim: true })
+        //             .style(Style::new().yellow())
+        //             .block(
+        //                 Block::new()
+        //                     .title("Without Clear")
+        //                     .title_style(Style::new().white().bold())
+        //                     .borders(Borders::ALL)
+        //                     .border_style(Style::new().red()),
+        //             );
+        //         Widget::render(bad_popup, popup_area, buf);
+        //
+        //
+        //         self.current_sub_menu=SubMenus::None; // Cleanup
+        //         // self.save_config();
+        //     }
+        //     SubMenus::None => {
+            // Get range and thingies.
+        use Constraint::{Length, Min};
+        // let vertical = Layout::vertical([Length(1), Min(0), Min(0), Length(1)]);
+        let vertical = Layout::vertical([Length(1), Min(0), Length(1)]);
+        let [header_area, inner_area, footer_area] = vertical.areas(area);
+        let horizontal = Layout::horizontal([Min(0), Length(20)]);
+        let [tabs_area, title_area] = horizontal.areas(header_area);
+
+        render_title(title_area, buf);
+        self.render_tabs(tabs_area, buf);
+
+
+        match self.selected_tab {
+            SelectedTab::Tab1 => self.selected_tab.render_enable_mods_tab(inner_area, buf, &mut self.active_tab_storage),
+            SelectedTab::Tab2 => {
+                let split_inner_area_vertical = Layout::horizontal([Min(0), Min(0)]);
+                let [main_content_area, bottom_content_area] = split_inner_area_vertical.areas(inner_area);
+
+                self.selected_tab.render_update_mods_tab(main_content_area, buf, &mut self.active_tab_storage, &mut self.latest_pulled_tags_hashmap);
+                self.selected_tab.describe_selected_mod_tag_description(bottom_content_area, buf, &mut self.active_tab_storage, &mut self.latest_pulled_tags_hashmap);
+            },
+            _ => {
+                //println!("tab out of bounds!")
+            }
+        }
+        render_footer(self,footer_area,buf);
+
+        // Popups render AFTER
+        match self.current_sub_menu  {
             SubMenus::UpdateSingleApps|SubMenus::UpdateAllApps => {
-                // Widget::render(Paragraph::new("HIIII\nHIIII\nHIIII\nHIIII\nHIIII\n"), popup_area,buf);
-
-                // sleep_ms(10000);
-
-
-
-                // Pop Up Style (idk how yet)
-                // let mut app_name_list: Vec<String> = vec![];
-                // match self.current_sub_menu {
-                //     SubMenus::None => {} //Pass
-                //     SubMenus::UpdateSingleApps => {
-                //         match self.active_tab_storage.list_state.selected() {
-                //             Some(index) => {
-                //                 let app_list = self.active_tab_storage.get_enabled_app_names();
-                //                 app_name_list.push(app_list.get(index).unwrap().to_string());
-                //             }
-                //             _ => {}
-                //         }
-                //     }
-                //     SubMenus::UpdateAllApps => {
-                //         self.active_tab_storage.get_enabled_app_names();
-                //     }
-                // }
-                //
-                // for app_name in app_name_list {
-                //     match self.latest_pulled_tags_hashmap.get("kkots/rev2-wakeup-tool") {
-                //         Some(tag_info) => {
-                //             self.active_tab_storage.config_manager.update_app("kkots/rev2-wakeup-tool".to_string(), tag_info);
-                //         }
-                //         None => {}
-                //     }
-                // }
-
                 // take up a third of the screen vertically and half horizontally
                 let popup_area = Rect {
                     x: area.width / 4,
@@ -580,64 +636,9 @@ impl Widget for &mut App {
                     );
                 Widget::render(bad_popup, popup_area, buf);
 
-
-                self.current_sub_menu=SubMenus::None; // Cleanup
-                // self.save_config();
             }
-            SubMenus::None => {
-                // Get range and thingies.
-                use Constraint::{Length, Min};
-                // let vertical = Layout::vertical([Length(1), Min(0), Min(0), Length(1)]);
-                let vertical = Layout::vertical([Length(1), Min(0), Length(1)]);
-                let [header_area, inner_area, footer_area] = vertical.areas(area);
-                let horizontal = Layout::horizontal([Min(0), Length(20)]);
-                let [tabs_area, title_area] = horizontal.areas(header_area);
-
-                render_title(title_area, buf);
-                self.render_tabs(tabs_area, buf);
-
-
-                match self.selected_tab {
-                    SelectedTab::Tab1 => self.selected_tab.render_enable_mods_tab(inner_area, buf, &mut self.active_tab_storage),
-                    SelectedTab::Tab2 => {
-                        let split_inner_area_vertical = Layout::horizontal([Min(0), Min(0)]);
-                        let [main_content_area, bottom_content_area] = split_inner_area_vertical.areas(inner_area);
-
-                        self.selected_tab.render_update_mods_tab(main_content_area, buf, &mut self.active_tab_storage, &mut self.latest_pulled_tags_hashmap);
-                        self.selected_tab.describe_selected_mod_tag_description(bottom_content_area, buf, &mut self.active_tab_storage, &mut self.latest_pulled_tags_hashmap);
-                    },
-                    _ => {
-                        //println!("tab out of bounds!")
-                    }
-                }
-                render_footer(self,footer_area,buf);
-
-                // // take up a third of the screen vertically and half horizontally
-                // let popup_area = Rect {
-                //     x: area.width / 4,
-                //     y: area.height / 3,
-                //     width: area.width / 2,
-                //     height: area.height / 3,
-                // };
-                // Clear.render(popup_area, buf);
-                //
-                // let bad_popup = Paragraph::new("Hello world!")
-                //     .wrap(Wrap { trim: true })
-                //     .style(Style::new().yellow())
-                //     .block(
-                //         Block::new()
-                //             .title("Without Clear")
-                //             .title_style(Style::new().white().bold())
-                //             .borders(Borders::ALL)
-                //             .border_style(Style::new().red()),
-                //     );
-                // Widget::render(bad_popup, popup_area, buf);
-
-
-                // println!("HIII");
-            }
+            _ => {} // Pass
         }
-
     }
 }
 
