@@ -119,13 +119,14 @@ impl SelectedTab {
 
         match tab_storage.list_state.selected() {
             Some(index) => {
-                let app_list = tab_storage.get_enabled_app_names(); // self.config_manager.get_sorted_apps_name();
-                let app_name = app_list.get(index).unwrap().to_string();
-                match latest_tags_pulled_map.get(&app_name) {
+                let app_name_list = tab_storage.get_enabled_app_names(); // self.config_manager.get_sorted_apps_name();
+                let app_name = app_name_list.get(index).unwrap().to_string();
+                let app = tab_storage.config_manager.config.apps.get(&app_name).unwrap();
+                match latest_tags_pulled_map.get(&app.get_app_name()) {
                     None => {
                         text_lines.push(Line::styled("No version found. Search for updates.".to_string(), COMPLETED_TEXT_FG_COLOR));
                         text = Text::from(text_lines);
-                        paragraph = Paragraph::new(text).gray().block(create_block(format!("{app_name} -> '??'"))).wrap(Wrap { trim: true });
+                        paragraph = Paragraph::new(text).gray().block(create_block(format!("{} '{}' -> '??'", app.get_app_name(), app.tag_name))).wrap(Wrap { trim: true });
                     }
 
                     Some(tag) => {
@@ -133,7 +134,7 @@ impl SelectedTab {
                             text_lines.push(Line::styled(format!("{}", line.to_string()), COMPLETED_TEXT_FG_COLOR));
                         }
                         text = Text::from(text_lines);
-                        paragraph = Paragraph::new(text).gray().block(create_block(format!("{app_name} -> '{}'",tag.tag_name.to_string()))).wrap(Wrap { trim: false });
+                        paragraph = Paragraph::new(text).gray().block(create_block(format!("{} '{}' -> '{}'", app.get_app_name(), app.tag_name, tag.tag_name.to_string()))).wrap(Wrap { trim: false });
 
                         // println!("{}", tag.get_formated_body());
                         // println!("{:?}", tag.get_formated_body());
@@ -513,33 +514,35 @@ impl Widget for &mut App {
         match self.current_sub_menu {
             SubMenus::UpdateSingleApps|SubMenus::UpdateAllApps => {
                 // Pop Up Style (idk how yet)
-                let mut app_name_list: Vec<String> = vec![];
-                match self.current_sub_menu {
-                    SubMenus::None => {} //Pass
-                    SubMenus::UpdateSingleApps => {
-                        match self.active_tab_storage.list_state.selected() {
-                            Some(index) => {
-                                let app_list = self.active_tab_storage.get_enabled_app_names();
-                                app_name_list.push(app_list.get(index).unwrap().to_string());
-                            }
-                            _ => {}
-                        }
-                    }
-                    SubMenus::UpdateAllApps => {
-                        self.active_tab_storage.get_enabled_app_names();
-                    }
-                }
-
-                for app_name in app_name_list {
-                    match self.latest_pulled_tags_hashmap.get(&app_name) {
-                        Some(tag_info) => {
-                            self.active_tab_storage.config_manager.update_app(app_name, tag_info);
-                        }
-                        None => {}
-                    }
-                }
+                // let mut app_name_list: Vec<String> = vec![];
+                // match self.current_sub_menu {
+                //     SubMenus::None => {} //Pass
+                //     SubMenus::UpdateSingleApps => {
+                //         match self.active_tab_storage.list_state.selected() {
+                //             Some(index) => {
+                //                 let app_list = self.active_tab_storage.get_enabled_app_names();
+                //                 app_name_list.push(app_list.get(index).unwrap().to_string());
+                //             }
+                //             _ => {}
+                //         }
+                //     }
+                //     SubMenus::UpdateAllApps => {
+                //         self.active_tab_storage.get_enabled_app_names();
+                //     }
+                // }
+                //
+                // for app_name in app_name_list {
+                //     match self.latest_pulled_tags_hashmap.get("kkots/rev2-wakeup-tool") {
+                //         Some(tag_info) => {
+                //             self.active_tab_storage.config_manager.update_app("kkots/rev2-wakeup-tool".to_string(), tag_info);
+                //         }
+                //         None => {}
+                //     }
+                // }
+                println!("HIII");
 
                 self.current_sub_menu=SubMenus::None; // Cleanup
+                self.save_config();
             }
             SubMenus::None => {
                 // Get range and thingies.
