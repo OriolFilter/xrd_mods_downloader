@@ -70,7 +70,7 @@ pub fn print_different_versions(current:&AppStruct, latest:&TagInfo) -> bool {
         // Source URL
         println!("Source URL: '{}'",latest.html_url);
         // Print notes
-        println!("Version notes:\n============\n{}\n============",latest.body.replace("\\n","\n").replace("\\r",""));
+        println!("Version notes:\n============\n{}\n============",latest.get_formated_body());
     }
     true
 }

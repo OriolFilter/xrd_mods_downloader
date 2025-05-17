@@ -49,9 +49,18 @@ pub struct TagInfo {
     pub(crate) id: i32,
     pub(crate) tag_name: String,
     tarball_url: String,
-    pub(crate) body: String,
+    body: String,
     pub(crate) published_at: String,
     assets: Vec<TagAssets>
+}
+
+impl TagInfo {
+    pub(crate) fn get_formated_body(&self) -> String {
+        // self.body.to_string()
+        // self.body.replace("\\r", "").replace("\\n", "\n")
+        self.body.replace("\\r", "")
+    }
+
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]

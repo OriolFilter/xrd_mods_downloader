@@ -22,16 +22,7 @@ use std::thread::{sleep, sleep_ms};
 use color_eyre::owo_colors::OwoColorize;
 use color_eyre::Result;
 use dirs::config_dir;
-use ratatui::{
-    buffer::Buffer,
-    crossterm::event::{self, Event, KeyCode, KeyEventKind},
-    layout::{Constraint, Layout, Rect},
-    style::{palette::tailwind, Color, Stylize},
-    symbols,
-    text::{Line, Text},
-    widgets::{Block, Padding, Paragraph, Tabs, Widget},
-    DefaultTerminal,
-};
+use ratatui::{buffer::Buffer, crossterm::event::{self, Event, KeyCode, KeyEventKind}, layout::{Constraint, Layout, Rect}, style::{palette::tailwind, Color, Stylize}, symbols, text, text::{Line, Text}, widgets::{Block, Padding, Paragraph, Tabs, Widget}, DefaultTerminal};
 use serde::{Deserialize, Serialize};
 
 use ratatui::{
@@ -60,7 +51,8 @@ use ratatui::{
     widgets::{Borders, Clear},
     Terminal,
 };
-
+use serde::de::IntoDeserializer;
+use serde_json::to_string;
 
 #[derive(Default)]
 enum SubMenus {
@@ -115,6 +107,52 @@ enum SelectedTab {
     Tab3,
     #[strum(to_string = "Tab 4")]
     Tab4,
+}
+
+impl SelectedTab {
+    pub(crate) fn describe_selected_mod_tag_description(self, area: Rect, buffer: &mut Buffer, tab_storage: &mut TabStorage, latest_tags_pulled_map: &mut HashMap<String,TagInfo>) {
+
+        let create_block = |title: String| Block::bordered().gray().title(title.bold());
+        let mut text_lines: Vec<Line>= vec![];
+        let mut paragraph: Paragraph;
+        let mut text: Text;
+
+        match tab_storage.list_state.selected() {
+            Some(index) => {
+                let app_list = tab_storage.get_enabled_app_names(); // self.config_manager.get_sorted_apps_name();
+                let app_name = app_list.get(index).unwrap().to_string();
+                match latest_tags_pulled_map.get(&app_name) {
+                    None => {
+                        text_lines.push(Line::styled("No version found. Search for updates.".to_string(), COMPLETED_TEXT_FG_COLOR));
+                        text = Text::from(text_lines);
+                        paragraph = Paragraph::new(text).gray().block(create_block(format!("{app_name} -> '??'"))).wrap(Wrap { trim: true });
+                    }
+
+                    Some(tag) => {
+                        for line in tag.get_formated_body().to_string().split("\n") {
+                            text_lines.push(Line::styled(format!("{}", line.to_string()), COMPLETED_TEXT_FG_COLOR));
+                        }
+                        text = Text::from(text_lines);
+                        paragraph = Paragraph::new(text).gray().block(create_block(format!("{app_name} -> '{}'",tag.tag_name.to_string()))).wrap(Wrap { trim: false });
+
+                        // println!("{}", tag.get_formated_body());
+                        // println!("{:?}", tag.get_formated_body());
+                        // println!("{}", tag.get_formated_body().replace("\\n","\n").replace("\r","").replace("Adds", "CAAAALVO"));
+                        // println!("{:?}", tag.get_formated_body());
+
+                        // sleep_ms(100000000);
+                        // description_line = Line::styled(format!("{} {}", tag.body, tag.body), COMPLETED_TEXT_FG_COLOR);
+                    }
+                }
+            }
+            _ => {
+                text_lines.push(Line::styled("No mod selected.".to_string(), COMPLETED_TEXT_FG_COLOR));
+                text = Text::from(text_lines);
+                paragraph = Paragraph::new(text).gray().block(create_block("".to_string()));
+            }
+        }
+        Widget::render(paragraph, area, buffer);
+    }
 }
 
 // Goody two shoes struct
@@ -506,6 +544,7 @@ impl Widget for &mut App {
             SubMenus::None => {
                 // Get range and thingies.
                 use Constraint::{Length, Min};
+                // let vertical = Layout::vertical([Length(1), Min(0), Min(0), Length(1)]);
                 let vertical = Layout::vertical([Length(1), Min(0), Length(1)]);
                 let [header_area, inner_area, footer_area] = vertical.areas(area);
                 let horizontal = Layout::horizontal([Min(0), Length(20)]);
@@ -517,7 +556,13 @@ impl Widget for &mut App {
 
                 match self.selected_tab {
                     SelectedTab::Tab1 => self.selected_tab.render_enable_mods_tab(inner_area, buf, &mut self.active_tab_storage),
-                    SelectedTab::Tab2 => self.selected_tab.render_update_mods_tab(inner_area, buf, &mut self.active_tab_storage, &mut self.latest_pulled_tags_hashmap),
+                    SelectedTab::Tab2 => {
+                        let split_inner_area_vertical = Layout::horizontal([Min(0), Min(0)]);
+                        let [main_content_area, bottom_content_area] = split_inner_area_vertical.areas(inner_area);
+
+                        self.selected_tab.render_update_mods_tab(main_content_area, buf, &mut self.active_tab_storage, &mut self.latest_pulled_tags_hashmap);
+                        self.selected_tab.describe_selected_mod_tag_description(bottom_content_area, buf, &mut self.active_tab_storage, &mut self.latest_pulled_tags_hashmap);
+                    },
                     _ => {
                         //println!("tab out of bounds!")
                     }
@@ -616,13 +661,17 @@ fn render_title(area: Rect, buf: &mut Buffer) {
 fn render_footer(app: &App, area: Rect, buf: &mut Buffer) {
     match app.selected_tab {
         SelectedTab::Tab1 => {
-            Line::raw("Use ↓↑ to move | ◄ ► to change tab | Enter to Select/Deselect | S/s to save | R/r to reload config | Q/q to quit")
+            Line::raw("Use ← ↓ ↑ → to navigate | Enter to Select/Deselect | S/s to save | R/r to reload config | Q/q to quit")
+            // Line::raw("Use ◄ ▲ ▼ ► to navigate | Enter to Select/Deselect | S/s to save | R/r to reload config | Q/q to quit")
+            // Line::raw("Use ↓↑ to move | ◄ ► to change tab | Enter to Select/Deselect | S/s to save | R/r to reload config | Q/q to quit")
                 .centered()
                 .render(area, buf);
         }
         SelectedTab::Tab2 => {
             // | Enter to Update Selected
-            Line::raw("Use ↓↑ to move | ◄ ► to change tab | s/S Search Updates | u/U to update All | R/r to reload config | Q/q to quit")
+            Line::raw("Use ← ↓ ↑ → to navigate | s/S Search Updates | u/U to update All | R/r to reload config | Q/q to quit")
+            // Line::raw("Use ◄ ▲ ▼ ► to navigate | s/S Search Updates | u/U to update All | R/r to reload config | Q/q to quit")
+            // Line::raw("Use ↓↑ to move | ◄ ► to change tab | s/S Search Updates | u/U to update All | R/r to reload config | Q/q to quit")
                 .centered()
                 .render(area, buf);
         }
