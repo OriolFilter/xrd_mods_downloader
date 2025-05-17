@@ -114,7 +114,7 @@ pub fn download_file_to_path(file_url: String, destination_dir: String){
     response.iter().for_each(|v| match v {
         Ok(v) => {}
             // println!("Downloaded: {:?}", v),
-        Err(e) => println!("Error: {:?}", e),
+        Err(e) => {} //println!("Error: {:?}", e),
     });
 }
 

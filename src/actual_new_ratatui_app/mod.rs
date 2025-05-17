@@ -41,6 +41,7 @@ use crate::stuff;
 use crate::stuff::{AppStruct, TagInfo};
 
 use derive_setters::Setters;
+use itertools::Itertools;
 use lipsum::lipsum;
 use ratatui::{
     backend::CrosstermBackend,
@@ -124,16 +125,17 @@ impl SelectedTab {
                 let app = tab_storage.config_manager.config.apps.get(&app_name).unwrap();
                 match latest_tags_pulled_map.get(&app.get_app_name()) {
                     None => {
-                        text_lines.push(Line::styled("No version found. Search for updates.".to_string(), COMPLETED_TEXT_FG_COLOR));
+                        text_lines.push(Line::styled("No version found. Search for updates.".to_string(), YELLOWED_TEXT_FG_COLOR));
                         text = Text::from(text_lines);
                         paragraph = Paragraph::new(text).gray().block(create_block(format!("{} '{}' -> '??'", app.get_app_name(), app.tag_name))).wrap(Wrap { trim: true });
                     }
 
                     Some(tag) => {
-                        for line in tag.get_formated_body().to_string().split("\n") {
-                            text_lines.push(Line::styled(format!("{}", line.to_string()), COMPLETED_TEXT_FG_COLOR));
-                        }
-                        text = Text::from(text_lines);
+                        // for line in tag.get_formated_body().to_string().split("\n") {
+                        //     text_lines.push(Line::styled(format!("{}", line.to_string()), COMPLETED_TEXT_FG_COLOR));
+                        // }
+                        // text = Text::from(tag.get_formated_body()).style(COMPLETED_TEXT_FG_COLOR);
+                        text = Text::from(tag.get_formated_body().to_string()).style(COMPLETED_TEXT_FG_COLOR);
                         paragraph = Paragraph::new(text).gray().block(create_block(format!("{} '{}' -> '{}'", app.get_app_name(), app.tag_name, tag.tag_name.to_string()))).wrap(Wrap { trim: false });
 
                         // println!("{}", tag.get_formated_body());
@@ -152,6 +154,7 @@ impl SelectedTab {
                 paragraph = Paragraph::new(text).gray().block(create_block("".to_string()));
             }
         }
+        Clear.render(area, buffer);
         Widget::render(paragraph, area, buffer);
     }
 }
