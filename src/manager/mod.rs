@@ -103,7 +103,7 @@ impl Manager {
         }
     }
 
-    pub(crate) fn update_app(&mut self, app_name: String, latest_tag_info: &TagInfo) {
+    pub(crate) fn update_app(&mut self, app_name: String, latest_tag_info: &TagInfo) -> std::io::Result<()> {
         let db_dir_path = self.config.get_db_dir_path().to_string();
         let modpath_dir = &format!("{}/{}", db_dir_path, app_name);
         let mut is_dir:bool=Path::new(modpath_dir).is_dir();
@@ -114,7 +114,8 @@ impl Manager {
                 if let Err(e) = create_dir_all(modpath_dir) {
                     // println!("Error: {}", e);
                     // println!("Error creating dir.\nExiting...");
-                    exit(1);
+                    // exit(1);
+                    panic!("{}",e);
                 }
                 // println!("Created directory for the mod {} located at '{}'", app_name, modpath_dir)
             }
@@ -132,6 +133,7 @@ impl Manager {
                     app_to_update.download_mod(modpath_dir, latest_tag_info);
                 }
                 _ => {
+                    // TODO idk how to render this for the user
                     // println!("[🚫] App '{}' of type {:?} doesn't have a update procedure. Skipping", app_name, app_to_update.app_type)
                 }
             }
@@ -141,6 +143,7 @@ impl Manager {
         app_to_update.published_at = latest_tag_info.published_at.to_string();
         app_to_update.url_source_version = latest_tag_info.html_url.to_string();
         app_to_update.id = latest_tag_info.id;
+        Ok(())
     }
 
     pub(crate) fn update_all(&mut self){

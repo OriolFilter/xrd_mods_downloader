@@ -135,7 +135,7 @@ impl AppStruct {
         format!("https://api.github.com/repos/{}/{}",self.repo_owner,self.repo_name).to_string()
     }
 
-    pub(crate) fn download_mod(&self, destination_dir: &String, tag_info: &TagInfo) {
+    pub(crate) fn download_mod(&self, destination_dir: &String, tag_info: &TagInfo) -> std::io::Result<()> {
         let mut assets_whitelist:Vec<String> = vec![];
 
         match self.app_type {
@@ -194,6 +194,9 @@ impl AppStruct {
                 unzip_file(format!("{}/{}",destination_dir.to_string(),matched_asset.name),destination_dir.to_string());
             }
         }
+
+        // Todo raise error
+        Ok(())
     }
 
     pub(crate) fn patch_app(&self, xrd_game_folder: String, downloaded_mod_folder: &String) -> io::Result<()> {

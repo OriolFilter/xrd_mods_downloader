@@ -15,7 +15,9 @@
 
 use std::collections::hash_map::Keys;
 use std::collections::HashMap;
+use std::env::remove_var;
 use std::net::ToSocketAddrs;
+use std::ops::Index;
 use std::process::exit;
 use std::thread;
 use std::thread::{sleep, sleep_ms};
@@ -52,6 +54,7 @@ use ratatui::{
     widgets::{Borders, Clear},
     Terminal,
 };
+use ratatui::symbols::line;
 use serde::de::IntoDeserializer;
 use serde_json::to_string;
 
@@ -70,6 +73,31 @@ struct AppStructListMenu {
     state: ListState
 }
 
+#[derive(Default)]
+enum AppUpdatingStatusStatus {
+    #[default]
+    Pending,
+    OnGoing,
+    Updated
+}
+
+struct AppUpdatingStatus {
+    app_name: String,
+    status: AppUpdatingStatusStatus
+}
+
+impl AppUpdatingStatus {
+    fn get_status_string(&self) -> String {
+        format!("{} ({})",self.app_name,
+                match self.status {
+                    AppUpdatingStatusStatus::Pending => {"Pending"}
+                    AppUpdatingStatusStatus::OnGoing => {"On Going"}
+                    AppUpdatingStatusStatus::Updated => {"Updated"}
+                }).to_string()
+    }
+
+}
+
 
 // Consts
 const NORMAL_ROW_BG: Color = SLATE.c950;
@@ -81,7 +109,7 @@ const YELLOWED_TEXT_FG_COLOR: Color = YELLOW.c200 ;
 
 #[derive(Default)]
 pub struct App {
-    state: AppState,
+    running_state: AppState,
     selected_tab: SelectedTab,
     current_sub_menu: SubMenus,
     // config_manager: Manager, // Tabs shouldn't use this. Used to populate tabs/pivot point.
@@ -198,7 +226,7 @@ impl App {
         // self.reset_active_tab_storage();
         // let mut widget_list_state = ListState::default();
 
-        while self.state == AppState::Running {
+        while self.running_state == AppState::Running {
             terminal.draw(|frame|
                 frame.render_widget(&mut self, frame.area())
                 // frame.render_stateful_widget(&mut self, frame.area(), &mut widget_list_state)
@@ -334,7 +362,7 @@ impl App {
     }
 
     fn quit(&mut self) {
-        self.state = AppState::Quitting;
+        self.running_state = AppState::Quitting;
     }
 
 
@@ -342,92 +370,16 @@ impl App {
     //
     // }
 
-    fn test_popup(&mut self, terminal: &mut DefaultTerminal) {
-        // terminal.d
-        // println!("Test popup!");
-        // println!("Test popup!");
-        // println!("Test popup!");
-        // println!("Test popup!");
-        // println!("Test popup!");
-        // sleep_ms(10000000);
-    }
+    // fn test_popup(&mut self, terminal: &mut DefaultTerminal) {
+    //     // terminal.d
+    //     // println!("Test popup!");
+    //     // println!("Test popup!");
+    //     // println!("Test popup!");
+    //     // println!("Test popup!");
+    //     // println!("Test popup!");
+    //     // sleep_ms(10000000);
+    // }
     fn update_all_enabled_mods(&mut self) {
-    // fn update_all_enabled_mods(&mut self, frame: &mut Frame) {
-    // fn update_all_enabled_mods(&mut self, terminal: &mut DefaultTerminal) {
-        // terminal.draw(self.)
-        // // terminal.clear();
-        // let mut frame = terminal.get_frame();
-        //
-        // // terminal.draw(|frame|
-        // //                   frame.render_widget(&mut self, frame.area())
-        // //               // frame.render_stateful_widget(&mut self, frame.area(), &mut widget_list_state)
-        // //               // frame.render_stateful_widget(&self, frame.area(), &mut widged_state)
-        // // )?;
-        // // // for
-        // //
-        //
-        // let area = frame.area();
-        // let popup_area = Rect {
-        //     x: area.width / 4,
-        //     y: area.height / 3,
-        //     width: area.width / 2,
-        //     height: area.height / 3,
-        // };
-        //
-        // use Constraint::{Length, Min};
-        // let vertical = Layout::vertical([Length(1), Min(0), Length(1)]);
-        // let [header_area, inner_area, footer_area] = vertical.areas(area);
-        // let horizontal = Layout::horizontal([Min(0), Length(20)]);
-        // let [tabs_area, title_area] = horizontal.areas(header_area);
-        // //
-        // //
-        // // //
-        // // let popup = Popup::default()
-        // //     .content("Hello world!")
-        // //     .style(Style::new().yellow())
-        // //     .title("With Clear")
-        // //     .title_style(Style::new().white().bold())
-        // //     .border_style(Style::new().red());
-        // //
-        // // frame.render_widget(popup, popup_area);
-        //
-        // let mut lines = vec![];
-        // lines.push(Line::styled(format!(" hiiii "), COMPLETED_TEXT_FG_COLOR));
-        // lines.push(Line::styled(format!(" hiiii "), COMPLETED_TEXT_FG_COLOR));
-        // lines.push(Line::styled(format!(" hiiii "), COMPLETED_TEXT_FG_COLOR));
-        // lines.push(Line::styled(format!(" hiiii "), COMPLETED_TEXT_FG_COLOR));
-        // lines.push(Line::styled(format!(" hiiii "), COMPLETED_TEXT_FG_COLOR));
-        // lines.push(Line::styled(format!(" hiiii "), COMPLETED_TEXT_FG_COLOR));
-        //
-        // // frame.render_widget(popup, popup_area);
-        // let list = List::new(lines)
-        //     .highlight_symbol(">")
-        //     .highlight_spacing(HighlightSpacing::Always);
-        //
-        // frame.render_widget(list, area);
-        //
-        //
-        // println!("HIIII");
-        // println!("HIIII");
-        // println!("HIIII");
-        // println!("HIIII");
-        // println!("HIIII");
-        //
-        //
-
-
-
-
-
-
-
-
-
-        // for app_name in self.active_tab_storage.get_enabled_app_names() {
-            // self.latest_pulled_tags_hashmap = 3;
-           // self.download_mod(app_name);
-        // }
-        // self.save_config() // TODO reenable, testing
         self.current_sub_menu=SubMenus::UpdateAllApps;
     }
 
@@ -610,10 +562,12 @@ impl Widget for &mut App {
                 //println!("tab out of bounds!")
             }
         }
-        render_footer(self,footer_area,buf);
 
+        render_footer(self,footer_area,buf);
         // Popups render AFTER
+        // Could be used to read errors -> then render the error popup.
         match self.current_sub_menu  {
+            // Update "submenu"
             SubMenus::UpdateSingleApps|SubMenus::UpdateAllApps => {
                 // take up a third of the screen vertically and half horizontally
                 let popup_area = Rect {
@@ -624,18 +578,111 @@ impl Widget for &mut App {
                 };
                 Clear.render(popup_area, buf);
 
-                let bad_popup = Paragraph::new("Hello world!")
-                    .wrap(Wrap { trim: true })
-                    .style(Style::new().yellow())
-                    .block(
-                        Block::new()
-                            .title("Without Clear")
-                            .title_style(Style::new().white().bold())
-                            .borders(Borders::ALL)
-                            .border_style(Style::new().red()),
-                    );
-                Widget::render(bad_popup, popup_area, buf);
+                let mut update_apps_status_hashmap: HashMap<String,AppUpdatingStatus> = HashMap::new();
 
+                let mut app_name_list: Vec<String> = match self.current_sub_menu {
+                    SubMenus::UpdateSingleApps => {
+                        match self.active_tab_storage.list_state.selected() {
+                            None => {vec![]} // TODO if no app is selected this shouldn't be rendered when UpdateSingleApp
+                            Some(index) => {
+                                vec![self.active_tab_storage.get_enabled_app_names().get(index).unwrap().to_string()]
+                            }
+                        }
+                    }
+                    _ => { self.active_tab_storage.get_enabled_app_names()}
+                };
+
+                // Format
+                // Apps to update:
+                // - 1 (waiting)
+                // - 2 (waiting)
+                // - 3 (waiting)
+                // ...
+                // - 1 (waiting)
+                // - 2 (waiting)
+                // - 3 (waiting)
+                // let mut lines_hashmap: HashMap<String,&String> = HashMap::new();
+
+                for app_name in &app_name_list {
+                    update_apps_status_hashmap.insert(
+                        app_name.to_string(),
+                        AppUpdatingStatus {
+                              app_name: app_name.to_string(),
+                            status: AppUpdatingStatusStatus::Pending
+                        });
+                }
+
+                fn render_update_status(update_apps_status_hashmap: &HashMap<String, AppUpdatingStatus>, popup_area: Rect, buf: &mut Buffer) {
+                    Clear.render(popup_area, buf);
+                    let mut lines_vector: Vec<Line> = vec![];
+                    for (_, app) in update_apps_status_hashmap {
+                        lines_vector.push(Line::styled(format!(" {}", app.get_status_string()), COMPLETED_TEXT_FG_COLOR));
+                    }
+
+                    let text = Text::from(lines_vector);
+
+                    let bad_popup = Paragraph::new(text)
+                        .wrap(Wrap { trim: true })
+                        .style(Style::new().yellow())
+                        .block(
+                            Block::new()
+                                .title("Updating apps")
+                                .title_style(Style::new().white().bold())
+                                .borders(Borders::ALL)
+                                .border_style(Style::new().red()),
+                        );
+                    let x = Widget::render(bad_popup, popup_area, buf);
+                    sleep_ms(1000);
+                }
+
+
+
+                for app_name in app_name_list {
+                    match update_apps_status_hashmap.get_mut(&app_name) {
+                        None => {} // Pass
+                        Some(app_update_status) => {
+                            app_update_status.status = AppUpdatingStatusStatus::OnGoing;
+                        }
+                    }
+                    // If no tag found custom message or something idk.
+                    render_update_status(&update_apps_status_hashmap, popup_area, buf); // TODO not showing as intended.
+
+                    // let latest_tag_info = self.latest_pulled_tags_hashmap.get(&app_name).unwrap();
+                    // match self.active_tab_storage.config_manager.update_app(app_name.to_string(), latest_tag_info) {
+                    match true { // Testing
+                        true => {
+                        // Ok(_) => {
+                            match update_apps_status_hashmap.get_mut(&app_name) {
+                                None => {} // Pass
+                                Some(app_update_status) => {
+                                    app_update_status.status = AppUpdatingStatusStatus::Updated;
+                                }
+                            }
+                            // self.save_config() // TODO reenable, testing
+                        },
+                        _ => {
+                        // Err(e) => {
+                            // Stop and print error
+                        }
+                    }
+                    // Only if it works >:(, if error Render error and break the loop.
+                }
+                render_update_status(&update_apps_status_hashmap, popup_area, buf);
+                // // Get lines, line the lines, render
+                // let text = Text::from("hello");
+                // let bad_popup = Paragraph::new(text)
+                //     .wrap(Wrap { trim: true })
+                //     .style(Style::new().yellow())
+                //     .block(
+                //         Block::new()
+                //             .title("Updating apps")
+                //             .title_style(Style::new().white().bold())
+                //             .borders(Borders::ALL)
+                //             .border_style(Style::new().red()),
+                //     );
+                // let x = Widget::render(bad_popup, popup_area, buf);
+                // x.blink();
+                self.current_sub_menu = SubMenus::None;
             }
             _ => {} // Pass
         }
