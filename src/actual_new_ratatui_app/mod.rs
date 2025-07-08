@@ -154,7 +154,7 @@ enum SelectedTab {
     Tab2,
     #[strum(to_string = "Patch Mods")]
     Tab3,
-    #[strum(to_string = "Tab 4")]
+    #[strum(to_string = "Launch Mods")]
     Tab4,
 }
 

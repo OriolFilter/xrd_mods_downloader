@@ -108,6 +108,12 @@ fn set_false() -> bool {
 
 impl AppStruct {
 
+    // TODO
+    // Return whether if it's possible or not to launch the mod.
+    pub(crate) fn is_launchable() -> bool {
+        false
+    }
+
     pub(crate) fn new(repo_owner: String, repo_name:String, app_type:AppType) -> Self {
         Self {
             repo_owner: repo_owner,
