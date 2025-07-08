@@ -50,8 +50,8 @@ fn main() -> Result<()> {
     //     with_help_message("Press enter to exit...").prompt();
     println!("hi");
     color_eyre::install()?;
-    let mut terminal = ratatui::init();
-    let app_result = crate::actual_new_ratatui_app::App::default().run(&mut terminal);
+    let terminal = ratatui::init();
+    let app_result = crate::actual_new_ratatui_app::App::default().run(terminal);
     // let app_result = crate::actual_new_ratatui_app::App::default().run();
     ratatui::restore();
     println!("bye");
