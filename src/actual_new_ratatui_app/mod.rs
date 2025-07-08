@@ -34,7 +34,7 @@ use ratatui::{
     Frame,
 };
 use ratatui::prelude::StatefulWidget;
-use ratatui::style::palette::material::YELLOW;
+use ratatui::style::palette::material::{RED, YELLOW};
 use ratatui::style::palette::tailwind::{GREEN, SLATE, STONE};
 use ratatui::widgets::{HighlightSpacing, ListItem, Wrap};
 use strum::{Display, EnumIter, FromRepr, IntoEnumIterator};
@@ -55,6 +55,7 @@ use ratatui::{
     widgets::{Borders, Clear},
     Terminal,
 };
+use ratatui::style::Color::Red;
 use ratatui::symbols::line;
 use serde::de::IntoDeserializer;
 use serde_json::to_string;
@@ -81,7 +82,8 @@ enum AppUpdatingStatusStatus {
     #[default]
     Pending,
     OnGoing,
-    Updated
+    Updated,
+    Failed
 }
 
 struct AppUpdatingStatus {
@@ -96,8 +98,18 @@ impl AppUpdatingStatus {
                     AppUpdatingStatusStatus::Pending => {"Pending"}
                     AppUpdatingStatusStatus::OnGoing => {"On Going"}
                     AppUpdatingStatusStatus::Updated => {"Updated"}
+                    AppUpdatingStatusStatus::Failed  => {"Failed"}
                 }).to_string()
     }
+    fn get_status_render_colour(&self) -> Color {
+        match self.status {
+            AppUpdatingStatusStatus::Pending => GREY_TEXT_FG_COLOR,
+            AppUpdatingStatusStatus::OnGoing => YELLOW_TEXT_FG_COLOR,
+            AppUpdatingStatusStatus::Updated => COMPLETED_TEXT_FG_COLOR,
+            AppUpdatingStatusStatus::Failed  => RED_TEXT_FG_COLOR
+        }
+    }
+
 
 }
 
@@ -107,8 +119,9 @@ const NORMAL_ROW_BG: Color = SLATE.c950;
 const ALT_ROW_BG_COLOR: Color = SLATE.c900;
 const TEXT_FG_COLOR: Color = SLATE.c200;
 const COMPLETED_TEXT_FG_COLOR: Color = GREEN.c500;
-const GREYED_TEXT_FG_COLOR: Color = SLATE.c300;
-const YELLOWED_TEXT_FG_COLOR: Color = YELLOW.c200 ;
+const GREY_TEXT_FG_COLOR: Color = SLATE.c300;
+const YELLOW_TEXT_FG_COLOR: Color = YELLOW.c200 ;
+const RED_TEXT_FG_COLOR: Color = RED.a700 ;
 
 #[derive(Default)]
 pub struct App {
@@ -160,7 +173,7 @@ impl SelectedTab {
                 let app = tab_storage.config_manager.config.apps.get(&app_name).unwrap();
                 match latest_tags_pulled_map.get(&app.get_app_name()) {
                     None => {
-                        text_lines.push(Line::styled("No version found. Search for updates.".to_string(), YELLOWED_TEXT_FG_COLOR));
+                        text_lines.push(Line::styled("No version found. Search for updates.".to_string(), YELLOW_TEXT_FG_COLOR));
                         text = Text::from(text_lines);
                         paragraph = Paragraph::new(text).gray().block(create_block(format!("{} '{}' -> '??'", app.get_app_name(), app.tag_name))).wrap(Wrap { trim: true });
                     }
@@ -242,11 +255,12 @@ impl App {
                 // frame.render_stateful_widget(&self, frame.area(), &mut widged_state)
             )?;
 
-            let seconds = Duration::new(0, 200);
-            if event::poll(seconds)? && !self.lock_inputs {
-                self.handle_events()?;
-            }
+            // let seconds = Duration::new(0, 200);
+            // if event::poll(seconds)? {
+            //     self.handle_events()?;
             // }
+            // }
+            self.handle_events()?;
         }
         Ok(())
     }
@@ -389,124 +403,8 @@ impl App {
     //     // sleep_ms(10000000);
     // }
 
-    fn update_all_async(&mut self) {
-
-
-
-        // println!("hiiii");
-        // let mut update_apps_status_hashmap: HashMap<String,AppUpdatingStatus> = HashMap::new();
-        //
-        // let mut app_name_list: Vec<String> = match self.current_sub_menu {
-        //     SubMenus::UpdateSingleApps => {
-        //         match self.active_tab_storage.list_state.selected() {
-        //             None => {vec![]} // TODO if no app is selected this shouldn't be rendered when UpdateSingleApp
-        //             Some(index) => {
-        //                 vec![self.active_tab_storage.get_enabled_app_names().get(index).unwrap().to_string()]
-        //             }
-        //         }
-        //     }
-        //     _ => { self.active_tab_storage.get_enabled_app_names()}
-        // };
-        //
-        // // Format
-        // // Apps to update:
-        // // - 1 (waiting)
-        // // - 2 (waiting)
-        // // - 3 (waiting)
-        // // ...
-        // // - 1 (waiting)
-        // // - 2 (waiting)
-        // // - 3 (waiting)
-        // let mut lines_hashmap: HashMap<String,&String> = HashMap::new();
-        //
-        // for app_name in &app_name_list {
-        //     update_apps_status_hashmap.insert(
-        //         app_name.to_string(),
-        //         AppUpdatingStatus {
-        //             app_name: app_name.to_string(),
-        //             status: AppUpdatingStatusStatus::Pending
-        //         });
-        // }
-        //
-        //
-        //
-        //
-        //
-        // for app_name in app_name_list {
-        //     match update_apps_status_hashmap.get_mut(&app_name) {
-        //         None => {} // Pass
-        //         Some(app_update_status) => {
-        //             app_update_status.status = AppUpdatingStatusStatus::OnGoing;
-        //         }
-        //     }
-        //     // If no tag found custom message or something idk.
-        //     // crate::IntellijRustImportsMock::render_update_status(&update_apps_status_hashmap, popup_area, buf);
-        //
-        //     // let latest_tag_info = self.latest_pulled_tags_hashmap.get(&app_name).unwrap();
-        //     // match self.active_tab_storage.config_manager.update_app(app_name.to_string(), latest_tag_info) {
-        //     match true { // Testing
-        //         true => {
-        //             // Ok(_) => {
-        //             match update_apps_status_hashmap.get_mut(&app_name) {
-        //                 None => {} // Pass
-        //                 Some(app_update_status) => {
-        //                     app_update_status.status = AppUpdatingStatusStatus::Updated;
-        //                 }
-        //             }
-        //             // self.save_config() // TODO reenable, testing
-        //         },
-        //         _ => {
-        //             // Err(e) => {
-        //             // Stop and print error
-        //         }
-        //     }
-        //     // Only if it works >:(, if error Render error and break the loop.
-        // }
-        //
-        // // // Get lines, line the lines, render
-        // // let text = Text::from("hello");
-        // // let bad_popup = Paragraph::new(text)
-        // //     .wrap(Wrap { trim: true })
-        // //     .style(Style::new().yellow())
-        // //     .block(
-        // //         Block::new()
-        // //             .title("Updating apps")
-        // //             .title_style(Style::new().white().bold())
-        // //             .borders(Borders::ALL)
-        // //             .border_style(Style::new().red()),
-        // //     );
-        // // let x = Widget::render(bad_popup, popup_area, buf);
-        // // x.blink();
-        //
-        //
-        //
-        // // self.current_sub_menu = SubMenus::None;
-        //
-        //
-        //
-        //
-        //
-        //
-        //
-        //
-        //
-        //
-        // // pass
-        // self.current_sub_menu=SubMenus::UpdateAllCompleted;
-
-
-
-
-
-    }
     fn update_all_enabled_mods(&mut self) {
         self.current_sub_menu=SubMenus::UpdateAllApps; // Select menu to render
-        self.lock_inputs = true; // Disable inputs during updating
-        // self.stored_thread = Some(thread::spawn(|| {self.update_all_async()}));
-        // thread::spawn(|| {self.update_all_async()}).join();
-        // thread::spawn(|| {test()}).join();
-        // sleep_ms(100000000);
-        // let x = task::spawn(async move {self.update_all_async().await});
     }
 
     fn pull_latest_tags(&mut self) {
@@ -602,68 +500,10 @@ impl SelectedTab {
 impl Widget for &mut App {
     // fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        // match self.current_sub_menu {
-        //     SubMenus::UpdateSingleApps|SubMenus::UpdateAllApps => {
-        //         // Widget::render(Paragraph::new("HIIII\nHIIII\nHIIII\nHIIII\nHIIII\n"), popup_area,buf);
-        //
-        //         // sleep_ms(10000);
-        //
-        //
-        //
-        //         // Pop Up Style (idk how yet)
-        //         // let mut app_name_list: Vec<String> = vec![];
-        //         // match self.current_sub_menu {
-        //         //     SubMenus::None => {} //Pass
-        //         //     SubMenus::UpdateSingleApps => {
-        //         //         match self.active_tab_storage.list_state.selected() {
-        //         //             Some(index) => {
-        //         //                 let app_list = self.active_tab_storage.get_enabled_app_names();
-        //         //                 app_name_list.push(app_list.get(index).unwrap().to_string());
-        //         //             }
-        //         //             _ => {}
-        //         //         }
-        //         //     }
-        //         //     SubMenus::UpdateAllApps => {
-        //         //         self.active_tab_storage.get_enabled_app_names();
-        //         //     }
-        //         // }
-        //         //
-        //         // for app_name in app_name_list {
-        //         //     match self.latest_pulled_tags_hashmap.get("kkots/rev2-wakeup-tool") {
-        //         //         Some(tag_info) => {
-        //         //             self.active_tab_storage.config_manager.update_app("kkots/rev2-wakeup-tool".to_string(), tag_info);
-        //         //         }
-        //         //         None => {}
-        //         //     }
-        //         // }
-        //
-        //         // take up a third of the screen vertically and half horizontally
-        //         let popup_area = Rect {
-        //             x: area.width / 4,
-        //             y: area.height / 3,
-        //             width: area.width / 2,
-        //             height: area.height / 3,
-        //         };
-        //         Clear.render(popup_area, buf);
-        //
-        //         let bad_popup = Paragraph::new("Hello world!")
-        //             .wrap(Wrap { trim: true })
-        //             .style(Style::new().yellow())
-        //             .block(
-        //                 Block::new()
-        //                     .title("Without Clear")
-        //                     .title_style(Style::new().white().bold())
-        //                     .borders(Borders::ALL)
-        //                     .border_style(Style::new().red()),
-        //             );
-        //         Widget::render(bad_popup, popup_area, buf);
-        //
-        //
-        //         self.current_sub_menu=SubMenus::None; // Cleanup
-        //         // self.save_config();
-        //     }
-        //     SubMenus::None => {
-            // Get range and thingies.
+        // TODO IDK
+        // let mut error_lines_hashmap = HashMap::new();
+
+        // Get render areas
         use Constraint::{Length, Min};
         // let vertical = Layout::vertical([Length(1), Min(0), Min(0), Length(1)]);
         let vertical = Layout::vertical([Length(1), Min(0), Length(1)]);
@@ -695,11 +535,113 @@ impl Widget for &mut App {
         match self.current_sub_menu  {
             // Update "submenu"
             SubMenus::UpdateSingleApps|SubMenus::UpdateAllApps => {
+                // Update
+
+                // Reset hmap
+                self.update_apps_status_hashmap = HashMap::new();
+
+                // Get app list
+                let mut app_name_list: Vec<String> = match self.current_sub_menu {
+                    SubMenus::UpdateSingleApps => {
+                        match self.active_tab_storage.list_state.selected() {
+                            None => {vec![]} // TODO if no app is selected this shouldn't be rendered when UpdateSingleApp
+                            Some(index) => {
+                                vec![self.active_tab_storage.get_enabled_app_names().get(index).unwrap().to_string()]
+                            }
+                        }
+                    }
+                    _ => { self.active_tab_storage.get_enabled_app_names()}
+                };
+                // Format
+                // Apps to update:
+                // - 1 (waiting)
+                // - 2 (waiting)
+                // - 3 (waiting)
+                // ...
+                // - 1 (waiting)
+                // - 2 (waiting)
+                // - 3 (waiting)
+
+                // idk, something about formatting the output
+                // let mut lines_hashmap: HashMap<String,&String> = HashMap::new();
+
+                for app_name in &app_name_list {
+                    self.update_apps_status_hashmap.insert(
+                        app_name.to_string(),
+                        AppUpdatingStatus {
+                            app_name: app_name.to_string(),
+                            status: AppUpdatingStatusStatus::Pending
+                        });
+                }
+
+                for app_name in app_name_list {
+                    match self.update_apps_status_hashmap.get_mut(&app_name) {
+                        None => {} // Pass
+                        Some(app_update_status) => {
+                            app_update_status.status = AppUpdatingStatusStatus::OnGoing;
+                        }
+                    }
+                    // If no tag found custom message or something idk.
+                    // crate::IntellijRustImportsMock::render_update_status(&update_apps_status_hashmap, popup_area, buf);
+
+                    // Get latest tag
+                    let latest_tag_info = self.latest_pulled_tags_hashmap.get(&app_name).unwrap();
+
+                    // Attempt to download the latest tag
+                    match self.active_tab_storage.config_manager.update_app(app_name.to_string(), latest_tag_info) {
+                    // match true { // Testing
+                        Ok(_) => {
+                            // Ok(_) => {
+                            match self.update_apps_status_hashmap.get_mut(&app_name) {
+                                None => {} // Pass
+                                Some(app_update_status) => {
+                                    app_update_status.status = AppUpdatingStatusStatus::Updated;
+                                }
+                            }
+                            self.save_config() // TODO reenable, testing
+                        },
+                        Err(e) => {
+                            match self.update_apps_status_hashmap.get_mut(&app_name) {
+                                None => {} // Pass
+                                Some(app_update_status) => {
+                                    app_update_status.status = AppUpdatingStatusStatus::Failed;
+                                }
+                            }
+                        }
+                        _ => {
+                            // Err(e) => {
+                            // Stop and print error
+                        }
+                    }
+                    // Only if it works >:(, if error Render error and break the loop.
+                }
+
+                // // Get lines, line the lines, render
+                // let text = Text::from("hello");
+                // let bad_popup = Paragraph::new(text)
+                //     .wrap(Wrap { trim: true })
+                //     .style(Style::new().yellow())
+                //     .block(
+                //         Block::new()
+                //             .title("Updating apps")
+                //             .title_style(Style::new().white().bold())
+                //             .borders(Borders::ALL)
+                //             .border_style(Style::new().red()),
+                //     );
+                // let x = Widget::render(bad_popup, popup_area, buf);
+                // x.blink();
+
+                // self.current_sub_menu=SubMenus::None;
+                // Mark completed
+                self.current_sub_menu=SubMenus::UpdateAllCompleted;
+
+
+                // Render menu
                 fn render_update_status(update_apps_status_hashmap: &HashMap<String, AppUpdatingStatus>, popup_area: Rect, buf: &mut Buffer) {
                     Clear.render(popup_area, buf);
                     let mut lines_vector: Vec<Line> = vec![];
                     for (_, app) in update_apps_status_hashmap {
-                        lines_vector.push(Line::styled(format!(" {}", app.get_status_string()), COMPLETED_TEXT_FG_COLOR));
+                        lines_vector.push(Line::styled(format!(" {}", app.get_status_string()), app.get_status_render_colour()));
                     }
 
                     let text = Text::from(lines_vector);
@@ -776,12 +718,12 @@ impl SelectedTab {
 
                 // Latest patch downloaded
                 let line: Line = match latest_tags_pulled_map.get(&app.get_app_name()) {
-                    None => {Line::styled(format!(" ? {}", app.get_app_name()), GREYED_TEXT_FG_COLOR)}  // Need to fetch updates
+                    None => {Line::styled(format!(" ? {}", app.get_app_name()), GREY_TEXT_FG_COLOR)}  // Need to fetch updates
                     Some(value) => {
                         // Differs with latest pulled
                         match app.tag_name == value.tag_name && !app.tag_name.is_empty() {
                             true => {Line::styled(format!(" ✓ {}", app.get_app_name()), COMPLETED_TEXT_FG_COLOR)} // Up to date
-                            false => {Line::styled(format!(" ! {}", app.get_app_name()), YELLOWED_TEXT_FG_COLOR)} // "New" version found
+                            false => {Line::styled(format!(" ! {}", app.get_app_name()), YELLOW_TEXT_FG_COLOR)} // "New" version found
                         }
                     }
                 };
