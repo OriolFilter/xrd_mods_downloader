@@ -148,7 +148,7 @@ enum AppState {
 #[derive(Default, Clone, Copy, Display, FromRepr, EnumIter)]
 enum SelectedTab {
     #[default]
-    #[strum(to_string = "Manage Mods")]
+    #[strum(to_string = "Select Visible Mods")]
     Tab1,
     #[strum(to_string = "Download/Update mods")]
     Tab2,
