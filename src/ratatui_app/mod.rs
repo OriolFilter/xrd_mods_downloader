@@ -29,12 +29,12 @@ const PALETTES: [tailwind::Palette; 4] = [
     tailwind::RED,
 ];
 
-struct ModsTable {
+pub(crate) struct ModsTable {
     // mod_list
-    sort_ascend: bool,
-    state: TableState,
+    pub(crate) sort_ascend: bool,
+    pub(crate) state: TableState,
     // color_index: i32,
-    app_list: HashMap<String,AppStruct>,
+    pub(crate) app_list: HashMap<String,AppStruct>,
     // colors: TableColors
 }
 
@@ -69,7 +69,7 @@ impl TableColors {
 }
 
 impl ModsTable {
-    fn draw_mods_table(&mut self, frame: &mut Frame) {
+    pub(crate) fn draw_mods_table(&mut self, frame: &mut Frame) {
         let vertical = &Layout::vertical([Constraint::Min(5), Constraint::Length(4)]);
         let rects = vertical.split(frame.area());
 
@@ -162,14 +162,14 @@ impl ModsTable {
 
 }
 
-impl menuApp {
-    pub(crate) fn new(terminal: DefaultTerminal) -> menuApp {
-        Self {
-            terminal: Some(terminal),
-            mods_table: None,
-        }
-    }
-}
+// impl menuApp {
+//     pub(crate) fn new(terminal: DefaultTerminal) -> menuApp {
+//         Self {
+//             terminal: Some(terminal),
+//             mods_table: None,
+//         }
+//     }
+// }
 
 impl menuApp {
     // fn print_mods_table() {
