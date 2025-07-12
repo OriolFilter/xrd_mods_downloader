@@ -10,7 +10,7 @@ fn main() -> io::Result<()>  {
     color_eyre::install();
     let terminal = ratatui::init();
 
-    let app_result = crate::ratatui_app::App::new(terminal).run();
+    let app_result = crate::ratatui_app::menuApp::new(terminal).run();
     // let app_result = crate::actual_new_ratatui_app::App::default().run(terminal);
     // let app_result = crate::actual_new_ratatui_app::App::default().run();
     ratatui::restore();
