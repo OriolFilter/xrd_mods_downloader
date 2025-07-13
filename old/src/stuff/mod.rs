@@ -97,7 +97,6 @@ pub struct AppStruct {
     pub(crate) track_updates: bool,
     #[serde(default = "set_false")] // TODO Unused
     pub(crate) tracked: bool,
-
 }
 
 
