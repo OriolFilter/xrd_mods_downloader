@@ -43,39 +43,53 @@ pub(crate) enum AppUpdateManagerStatus {
     Finished
 }
 
-pub(crate) struct AppUpdateManager {
-    // pub(crate) apps_to_update: Vec<ModUpdatingStatus>, // TODO make it a hashmap so there are no dupes (for whatever reason).
-    pub(crate) status: AppUpdateManagerStatus
-}
+// pub(crate) struct AppUpdateManager {
+//     // pub(crate) apps_to_update: Vec<ModUpdatingStatus>, // TODO make it a hashmap so there are no dupes (for whatever reason).
+//     pub(crate) status: AppUpdateManagerStatus
+// }
+//
+// impl AppUpdateManager {
+//     // pub(crate) fn add_app_to_update(&mut self, app:  AppStruct) {
+//     //     self.apps_to_update.push(ModUpdatingStatus{ app, status: AppUpdatingStatusStatus::Pending })
+//     // }
+//
+//     pub(crate) fn quit(&mut self) {
+//         // idk cleanup/stop whatever it's doing something.
+//     }
+//
+//     // pub(crate) fn update_app(&mut self, app: &AppStruct) {
+//     pub(crate) async fn update_app(&mut self, apps_to_update: Vec<AppStruct> ) {
+//         // Set running
+//         // self.status = AppUpdateManagerStatus::Running;
+//         // Download if dont exists
+//
+//         // Update if already exists
+//         // The pipeline should feel the same.
+//         // Downloading is like updating from Null to 'XYZ'
+//
+//         loop {
+//             println!("Updating {:#?}", apps_to_update[0].get_app_name());
+//             std::thread::sleep_ms(1000);
+//         }
+//
+//         // self.status = AppUpdateManagerStatus::Finished;
+//     }
+//     // pub(crate) fn get_status(&self) -> AppUpdateManagerStatus {
+//     //     self.status.to_owned()
+//     // }
+// }
 
-impl AppUpdateManager {
-    // pub(crate) fn add_app_to_update(&mut self, app:  AppStruct) {
-    //     self.apps_to_update.push(ModUpdatingStatus{ app, status: AppUpdatingStatusStatus::Pending })
-    // }
+pub(crate) async fn update_app_async(apps_to_update: Vec<AppStruct> ) {
+    // Set running
+    // self.status = AppUpdateManagerStatus::Running;
+    // Download if dont exists
 
-    pub(crate) fn quit(&mut self) {
-        // idk cleanup/stop whatever it's doing something.
+    // Update if already exists
+    // The pipeline should feel the same.
+    // Downloading is like updating from Null to 'XYZ'
+
+    loop {
+        println!("Updating {:#?}", apps_to_update[0].get_app_name());
+        std::thread::sleep_ms(1000);
     }
-
-    // pub(crate) fn update_app(&mut self, app: &AppStruct) {
-    pub(crate) async fn update_app(self, apps_to_update: Vec<AppStruct> ) {
-        // Set running
-        // self.status = AppUpdateManagerStatus::Running;
-        // Download if dont exists
-
-        // Update if already exists
-        // The pipeline should feel the same.
-        // Downloading is like updating from Null to 'XYZ'
-
-        loop {
-            println!("Updating {:#?}", apps_to_update[0].get_app_name());
-            std::thread::sleep_ms(1000);
-        }
-
-        // self.status = AppUpdateManagerStatus::Finished;
-    }
-    // pub(crate) fn get_status(&self) -> AppUpdateManagerStatus {
-    //     self.status.to_owned()
-    // }
 }
-

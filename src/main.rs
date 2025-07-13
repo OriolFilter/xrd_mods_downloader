@@ -7,6 +7,7 @@ use std::io;
 use color_eyre::owo_colors::OwoColorize;
 use crossterm::event;
 use crossterm::event::{Event, KeyCode, KeyEventKind};
+use futures::task::Spawn;
 use itertools::Itertools;
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Position, Rect};
@@ -15,11 +16,12 @@ use ratatui_app::*;
 use apps::*;
 use ratatui::style::palette::tailwind::{SLATE};
 use ratatui::text::Line;
-use download_manager::AppUpdateManager;
+use download_manager::update_app_async;
 use ratatui_app::AppMenuOptionsList;
 use functions::{launch_mod};
 use crate::download_manager::{AppUpdateManagerStatus, ModUpdatingStatus};
 use tokio::spawn;
+use tokio::task::JoinHandle;
 
 #[tokio::main]
 async fn main() -> io::Result<()>  {
@@ -46,20 +48,29 @@ async fn main() -> io::Result<()>  {
     };
 
     let mut app_menu_options = AppMenuOptions{ state: Default::default(), app: None, colors: TableColors::new() };
-    let mut app_update_manager = AppUpdateManager{status: Default::default()};
+    let mut update_manager_spawn: Option<JoinHandle<()>>;
+    // let mut app_update_manager = AppUpdateManager{status: Default::default()};
     while !exit {
-
-        // let app_status = app_update_manager.get_status().to_owned();
-        // match app_update_manager.clone().get_status() {
-        //     AppUpdateManagerStatus::Running => {}
-        //     AppUpdateManagerStatus::Finished => {}
-        //     AppUpdateManagerStatus::Pending => {
-        match menu_to_render {
-            MenuToRender::AppList => {terminal.draw(|frame| mod_list_table.render(frame))?;}
-            MenuToRender::AppMenuOptions => {terminal.draw(|frame| app_menu_options.render(frame))?;}
-                // }
-            // }
+        if update_manager_spawn.is_some() {
+        } else {
+            match menu_to_render {
+                MenuToRender::AppList => {terminal.draw(|frame| mod_list_table.render(frame))?;}
+                MenuToRender::AppMenuOptions => {terminal.draw(|frame| app_menu_options.render(frame))?;}
+            }
         }
+        // // If something means it's updating
+        // //         match handle.is_finished() {
+        // //             true => {}
+        // //             false => {}
+        // //         }
+        //
+        //         // Check which is the state and render the appropriate window, aka, weather if it's done or not.
+        //
+        //     }
+            // None => {
+            //     // If empty means not updating
+            // }
+        // }
 
 
         if let Event::Key(key) = event::read()? {
@@ -98,14 +109,14 @@ async fn main() -> io::Result<()>  {
                                             AppMenuOptionsList::Launch => {
                                                 launch_mod(mod_list_table.get_selected_app().unwrap())?;
                                             }
+
                                             AppMenuOptionsList::Download => {
-                                                app_update_manager = AppUpdateManager {
-                                                    status: Default::default()
-                                                };
-                                                spawn(app_update_manager.update_app(vec![app_menu_options.app.clone().unwrap()]));
+                                                // let x= update_app_async(vec![app_menu_options.app.clone().unwrap()]);
+                                                update_manager_spawn = Some(spawn(update_app_async(vec![app_menu_options.app.clone().unwrap()])));
                                             }
+
                                             AppMenuOptionsList::Patch => {} //
-                                            AppMenuOptionsList::Update => {} //
+                                            AppMenuOptionsList::Update => {} // Same as Download :shrug:
                                             AppMenuOptionsList::Description => {}, // Maybe don't render/do anything and display this directly while in the app menu page.
                                         }
                                     }
