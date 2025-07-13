@@ -15,10 +15,10 @@ use ratatui_app::*;
 use apps::*;
 use ratatui::style::palette::tailwind::{SLATE};
 use ratatui::text::Line;
-use download_manager::AppUpdateManager;
+// use download_manager::AppUpdateManager;
 use ratatui_app::AppMenuOptionsList;
 use functions::{launch_mod};
-use crate::download_manager::ModUpdatingStatus;
+// use crate::download_manager::ModUpdatingStatus;
 
 #[tokio::main]
 async fn main() -> io::Result<()>  {
@@ -45,7 +45,7 @@ async fn main() -> io::Result<()>  {
     };
 
     let mut app_menu_options = AppMenuOptions{ state: Default::default(), app: None, colors: TableColors::new() };
-    let mut app_update_manager = AppUpdateManager{status: Default::default()};
+    // let mut app_update_manager = AppUpdateManager{status: Default::default()};
     while !exit {
         match menu_to_render {
             MenuToRender::AppList => {terminal.draw(|frame| mod_list_table.render(frame))?;}
@@ -89,9 +89,10 @@ async fn main() -> io::Result<()>  {
                                                 launch_mod(mod_list_table.get_selected_app().unwrap())?;
                                             }
                                             AppMenuOptionsList::Download => {
-                                                app_update_manager = AppUpdateManager {
-                                                    status: Default::default()
-                                                };
+                                                // app_update_manager = AppUpdateManager {
+                                                //     status: Default::default()
+                                                // };
+                                                // app_update_manager.update_app(&app_menu_options.app.unwrap());
                                                 // app_update_manager.update_apps(vec![app_menu_options.app]);
                                                 // app_update_manager.add_app_to_update(app_menu_options.app.unwrap())
                                             }

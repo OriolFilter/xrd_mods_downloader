@@ -57,9 +57,10 @@ impl AppUpdateManager {
         // idk cleanup/stop whatever it's doing something.
     }
 
-    pub(crate) fn update_apps(&mut self, apps_to_update: Vec<Option<AppStruct>>) {
+    pub(crate) fn update_app(&mut self, app: &AppStruct) {
+    // pub(crate) fn update_apps(&mut self, apps_to_update: Vec<Option<AppStruct>>) {
         loop {
-            println!("Updating {:#?}", apps_to_update.get(0));
+            println!("Updating {:#?}", app.get_app_name());
             std::thread::sleep_ms(1000);
         }
     }

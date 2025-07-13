@@ -324,6 +324,7 @@ impl AppMenuOptions {
 
             styled_lines.push(ListItem::new(option.to_string()).bg(color));
             // styled_line.push(ListItem::from(manager.config.apps.get(&app_name).unwrap()).bg(color));
+            i+=1;
         }
 
         let list = List::new(styled_lines)
