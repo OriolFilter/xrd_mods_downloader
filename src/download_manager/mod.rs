@@ -81,7 +81,6 @@ impl AppUpdateManager {
         // Update if already exists
         // The pipeline should feel the same.
         // Downloading is like updating from Null to 'XYZ'
-
         self.status = AppUpdateManagerStatus::Running;
         loop {
             println!("Updating {:#?}", self.apps_to_update[0].app.get_app_name());
@@ -92,9 +91,12 @@ impl AppUpdateManager {
     }
 
     // pub(crate) fn start_async_update(&mut self) -> io::Result<()>  {
-    //     let async_spawn = spawn(self.update_apps());
-    //     self.async_spawn = Some(async_spawn);
-    //     Ok(())
+    // pub(crate) fn start_async_update(&mut self) -> JoinHandle<()>  {
+        // let async_spawn = spawn(self.update_apps());
+    // pub(crate) fn start_async_update(&mut self) {
+    //     self.async_spawn=Option::from(spawn(self.update_apps()))
+    //     // self.async_spawn = Some(async_spawn);
+    //     // Ok(())
     // }
     pub(crate) fn get_status(&mut self) -> AppUpdateManagerStatus {
         self.status.to_owned()

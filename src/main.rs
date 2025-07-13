@@ -48,7 +48,7 @@ async fn main() -> io::Result<()>  {
     };
 
     let mut app_menu_options = AppMenuOptions{ state: Default::default(), app: None, colors: TableColors::new() };
-    // let mut update_manager_spawn: Option<JoinHandle<()>> = None;
+    let mut update_manager_spawn: Option<JoinHandle<()>> = None;
     // let mut update_manager_spawn: Option<JoinHandle<()>>;
     let mut app_update_manager = crate::download_manager::AppUpdateManager::new();
     while !exit {
@@ -119,7 +119,8 @@ async fn main() -> io::Result<()>  {
                                             AppMenuOptionsList::Download => {
                                                 app_update_manager = AppUpdateManager::new();
                                                 app_update_manager.add_app_to_update(app_menu_options.app.clone().unwrap());
-                                                let async_spawn = spawn(app_update_manager.update_apps());
+                                                app_update_manager.async_spawn= Option::from(spawn(app_update_manager.update_apps()));
+                                                // update_manager_spawn = Some(spawn(app_update_manager.update_apps()));
                                                 // app_update_manager.start_async_update()?;
                                                 // let x= update_app_async(vec![app_menu_options.app.clone().unwrap()]);
                                                 // update_manager_spawn = Some(spawn(update_app_async(vec![app_menu_options.app.clone().unwrap()])));
