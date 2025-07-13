@@ -19,7 +19,7 @@ use ratatui::text::Line;
 use download_manager::update_app_async;
 use ratatui_app::AppMenuOptionsList;
 use functions::{launch_mod};
-use crate::download_manager::{AppUpdateManagerStatus, ModUpdatingStatus};
+use crate::download_manager::{AppUpdateManager, AppUpdateManagerStatus, ModUpdatingStatus};
 use tokio::spawn;
 use tokio::task::JoinHandle;
 
@@ -48,8 +48,9 @@ async fn main() -> io::Result<()>  {
     };
 
     let mut app_menu_options = AppMenuOptions{ state: Default::default(), app: None, colors: TableColors::new() };
-    let mut update_manager_spawn: Option<JoinHandle<()>>;
-    // let mut app_update_manager = AppUpdateManager{status: Default::default()};
+    let mut update_manager_spawn: Option<JoinHandle<()>> = None;
+    // let mut update_manager_spawn: Option<JoinHandle<()>>;
+    let mut app_update_manager = crate::download_manager::AppUpdateManager { apps_to_update: vec![], status: Default::default()};
     while !exit {
         if update_manager_spawn.is_some() {
         } else {
@@ -111,6 +112,11 @@ async fn main() -> io::Result<()>  {
                                             }
 
                                             AppMenuOptionsList::Download => {
+                                                app_update_manager = AppUpdateManager {
+                                                    apps_to_update: vec![],
+                                                    status: Default::default()
+                                                };
+                                                app_update_manager.add_app_to_update(app_menu_options.app.clone().unwrap());
                                                 // let x= update_app_async(vec![app_menu_options.app.clone().unwrap()]);
                                                 update_manager_spawn = Some(spawn(update_app_async(vec![app_menu_options.app.clone().unwrap()])));
                                             }
