@@ -1,18 +1,24 @@
+mod functions;
+
 use std::collections::HashMap;
 use std::io::BufRead;
 use std::option::Option;
+use color_eyre::owo_colors::colors::xterm::Purple;
 use color_eyre::owo_colors::OwoColorize;
 use crossterm::event;
 use crossterm::event::{Event, KeyCode, KeyEventKind, KeyModifiers};
 use ratatui::{DefaultTerminal, Frame};
 use ratatui::layout::{Constraint, Layout, Rect};
-use ratatui::style::{Color, Style, Stylize};
+use ratatui::layout::Constraint::{Length, Min};
+use ratatui::prelude::Line;
+use ratatui::style::{Color, Modifier, Style, Stylize};
 use ratatui::style::palette::tailwind;
 use ratatui::style::palette::tailwind::Palette;
 use ratatui::text::Text;
-use ratatui::widgets::{Cell, HighlightSpacing, Paragraph, Row, Table, TableState, Widget};
+use ratatui::widgets::{Block, Borders, Cell, HighlightSpacing, ListState, Paragraph, Row, Table, TableState, Widget};
 use crate::apps::AppStruct;
 use ratatui::style::palette::tailwind::{GREEN, SLATE, STONE};
+use crate::ratatui_app::functions::render_footer;
 
 const PALETTES: [tailwind::Palette; 4] = [
     tailwind::BLUE,
@@ -37,7 +43,6 @@ pub(crate) struct TableColors {
     pub(crate) row_fg: Color,
     pub(crate) selected_row_style_fg: Color,
     pub(crate) selected_column_style_fg: Color,
-    pub(crate) selected_cell_style_fg: Color,
     pub(crate) normal_row_color: Color,
     pub(crate) alt_row_color: Color,
     pub(crate) footer_border_color: Color,
@@ -53,7 +58,6 @@ impl TableColors {
             row_fg: tailwind::SLATE.c200,
             selected_row_style_fg: color.c400,
             selected_column_style_fg: color.c400,
-            selected_cell_style_fg: color.c600,
             normal_row_color: tailwind::SLATE.c950,
             alt_row_color: tailwind::SLATE.c900,
             footer_border_color: color.c400,
@@ -62,27 +66,48 @@ impl TableColors {
 }
 
 impl ModsTable {
-    pub(crate) fn draw_mods_table(&mut self, frame: &mut Frame) {
-        let vertical = &Layout::vertical([Constraint::Min(5), Constraint::Length(4)]);
-        let rects = vertical.split(frame.area());
+    pub(crate) fn select_next(&mut self) {
+        self.state.select_next();
+    }
+    pub(crate) fn select_previous(&mut self) {
+        self.state.select_previous();
+    }
 
+    pub(crate) fn select_first(&mut self) {
+        self.state.select_first();
+    }
+
+    pub(crate) fn select_last(&mut self) {
+        self.state.select_last();
+    }
+
+
+    pub(crate) fn draw_mods_table(&mut self, frame: &mut Frame) {
+        // let vertical = &Layout::vertical([Constraint::Min(5), Constraint::Length(4)]);
+        let vertical = &Layout::vertical([Min(0), Length(1)]);
+        // let vertical = &Layout::vertical([Length(1), Min(0), Length(1)]);
+        let rects = vertical.split(frame.area());
         self.render_table(frame, rects[0]);
-        // self.render_footer(frame, rects[1]);
+        // Line::raw("Use ↓ ↑ to navigate | Enter to Select/Deselect | Q/q to quit").centered().render(rects[1]);
+        // self.render_controls(frame, rects[1]);
+
+
+        render_footer(frame,rects[1]);
     }
 
     fn render_table(&mut self, frame: &mut Frame, area: Rect)  {
+        let block = Block::new()
+            .borders(Borders::ALL)
+            .title("Apps");
 
         let header_style =  Style::default();
-        let selected_row_style = Style::default();
-            // .add_modifier(Modifier::REVERSED)
-            // .fg(self.colors.selected_row_style_fg);
+        let selected_row_style = Style::default()
+            .add_modifier(Modifier::REVERSED)
+            .fg(self.colors.selected_row_style_fg);
         let selected_col_style = Style::default(); //.fg(self.colors.selected_column_style_fg);
-        let selected_cell_style = Style::default();
-            // .add_modifier(Modifier::REVERSED)
-            // .fg(self.colors.selected_cell_style_fg);
 
         // let header = ["Name"]
-        let header = ["Mod Name", "Enabled"]
+        let header = ["Name", "Enabled"]
             .into_iter()
             .map(Cell::from)
             .collect::<Row>()
@@ -108,29 +133,25 @@ impl ModsTable {
             }
         }
 
-
-        // let bar = " █ ";
-        let t = Table::new(
-            rows,
-            [
-                // + 1 is for padding.
-                Constraint::Length(app_name_max_col_length + 1),
-                Constraint::Min(enabled_max_col_length + 1)
-            ],
-        )
+        let bar = " > ";
+        let table = Table::new(
+                rows,
+                [
+                    // + 1 is for padding.
+                    Constraint::Length(app_name_max_col_length + 1),
+                    Constraint::Min(enabled_max_col_length + 1)
+                ],
+            )
             .header(header)
             .row_highlight_style(selected_row_style)
             .column_highlight_style(selected_col_style)
-            .cell_highlight_style(selected_cell_style)
-            // .highlight_symbol(Text::from(vec![
-            //     "".into(),
-            //     bar.into(),
-            //     bar.into(),
-            //     "".into(),
-            // ])).
+            .highlight_symbol(Text::from(vec![
+                bar.into()
+            ]))
             .bg(self.colors.buffer_bg)
-            .highlight_spacing(HighlightSpacing::Always);
-        frame.render_stateful_widget(t, area, &mut self.state);
+            .highlight_spacing(HighlightSpacing::Always)
+            .block(block);
+        frame.render_stateful_widget(table, area, &mut self.state);
         // frame.render_widget(Paragraph::new("hiaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa").bg(SLATE.c200).fg(SLATE.c800), area);
         // Paragraph
         // frame.render_stateful_widget(t, area, &mut self.state);

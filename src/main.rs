@@ -4,10 +4,13 @@ mod apps;
 use std::io;
 use crossterm::event;
 use crossterm::event::{Event, KeyCode, KeyEventKind};
-use ratatui::widgets::TableState;
+use ratatui::buffer::Buffer;
+use ratatui::layout::Rect;
+use ratatui::widgets::{TableState, Widget};
 use ratatui_app::*;
 use apps::*;
 use ratatui::style::palette::tailwind::{SLATE};
+use ratatui::text::Line;
 
 fn main() -> io::Result<()>  {
     println!("hi");
@@ -25,7 +28,6 @@ fn main() -> io::Result<()>  {
     let mut mods_table = ModsTable {
         sort_ascend: false,
         state: TableState::default().with_selected(0),
-        // color_index: 0,
         app_list: default_apps,
         colors: TableColors::new()
     };
@@ -36,6 +38,9 @@ fn main() -> io::Result<()>  {
             if key.kind == KeyEventKind::Press {
                 match key.code {
                     KeyCode::Char('q') | KeyCode::Esc => return Ok(()),
+                    KeyCode::Up => mods_table.select_previous(),
+                    KeyCode::Down => mods_table.select_next(),
+                    KeyCode::Enter => {},
                     _ => {}
                 }
             }
