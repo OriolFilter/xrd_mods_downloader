@@ -19,6 +19,7 @@ use crate::apps::AppStruct;
 pub(crate) enum AppMenuOptionsList {
     Launch,
     Patch,
+    Download,
     Update,
     Description,
 
@@ -32,6 +33,7 @@ impl fmt::Display for AppMenuOptionsList {
             AppMenuOptionsList::Patch => {"Patch mod"}
             AppMenuOptionsList::Update => {"Search for updates"}
             AppMenuOptionsList::Description => {"Mod's description"}
+            AppMenuOptionsList::Download => {"Download mod"}
         })?;
         Ok(())
     }
@@ -130,7 +132,7 @@ impl ModListTable {
         let selected_row_style = Style::default()
             .add_modifier(Modifier::REVERSED)
             .fg(self.colors.selected_row_style_fg);
-        let selected_col_style = Style::default(); //.fg(self.colors.selected_column_style_fg);
+        // let selected_col_style = Style::default(); //.fg(self.colors.selected_column_style_fg);
 
         // let header = ["Name"]
         let header = ["Name", "Enabled"]
@@ -171,7 +173,7 @@ impl ModListTable {
             )
             .header(header)
             .row_highlight_style(selected_row_style)
-            .column_highlight_style(selected_col_style)
+            // .column_highlight_style(selected_col_style)
             .highlight_symbol(Text::from(vec![
                 bar.into()
             ]))
@@ -274,16 +276,23 @@ impl AppMenuOptions {
     fn get_menu_options_from_app(&self) -> Vec<AppMenuOptionsList>{
         let mut menu_options = vec![];
 
+        match self.app.clone().unwrap().is_installed() {
+            true => {
+                if self.app.clone().unwrap().is_launchable() {
+                    menu_options.push(AppMenuOptionsList::Launch)
+                }
 
-        if self.app.clone().unwrap().is_launchable(){
-            menu_options.push(AppMenuOptionsList::Launch)
+                menu_options.push(AppMenuOptionsList::Update);
+
+                if self.app.clone().unwrap().is_patcheable(){
+                    menu_options.push(AppMenuOptionsList::Patch)
+                }
+            }
+            false => {
+                menu_options.push(AppMenuOptionsList::Download)
+            }
         }
 
-        menu_options.push(AppMenuOptionsList::Update);
-
-        if self.app.clone().unwrap().is_patcheable(){
-            menu_options.push(AppMenuOptionsList::Patch)
-        }
 
         menu_options.push(AppMenuOptionsList::Description);
 
@@ -294,6 +303,11 @@ impl AppMenuOptions {
         let block = Block::new()
             .borders(Borders::ALL)
             .title(format!("Selected app {}",app_name));
+
+        let selected_row_style = Style::default()
+            .add_modifier(Modifier::REVERSED)
+            .fg(self.colors.selected_row_style_fg);
+
 
         let mut menu_options = self.get_menu_options_from_app();
 
@@ -313,7 +327,10 @@ impl AppMenuOptions {
         }
 
         let list = List::new(styled_lines)
-            .highlight_symbol(">")
+            .highlight_symbol(" > ")
+            .highlight_spacing(HighlightSpacing::Always)
+            .highlight_style(selected_row_style)
+            .bg(self.colors.buffer_bg)
             .highlight_spacing(HighlightSpacing::Always)
             .block(block);
 

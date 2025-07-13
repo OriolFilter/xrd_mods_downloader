@@ -54,6 +54,12 @@ impl AppStruct {
     pub(crate) fn is_launchable(&self) -> bool {
         true
     }
+
+    // TODO
+    // Return whether the mod is installed or not
+    pub(crate) fn is_installed(&self) -> bool {
+        false
+    }
 }
 
 fn set_false() -> bool {

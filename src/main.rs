@@ -1,6 +1,7 @@
 mod ratatui_app;
 mod apps;
 mod functions;
+mod download_manager;
 
 use std::io;
 use color_eyre::owo_colors::OwoColorize;
@@ -14,10 +15,13 @@ use ratatui_app::*;
 use apps::*;
 use ratatui::style::palette::tailwind::{SLATE};
 use ratatui::text::Line;
+use download_manager::AppUpdateManager;
 use ratatui_app::AppMenuOptionsList;
 use functions::{launch_mod};
+use crate::download_manager::ModUpdatingStatus;
 
-fn main() -> io::Result<()>  {
+#[tokio::main]
+async fn main() -> io::Result<()>  {
     println!("hi");
 
     // Check if config exists
@@ -41,7 +45,7 @@ fn main() -> io::Result<()>  {
     };
 
     let mut app_menu_options = AppMenuOptions{ state: Default::default(), app: None, colors: TableColors::new() };
-
+    let mut app_update_manager = AppUpdateManager{status: Default::default()};
     while !exit {
         match menu_to_render {
             MenuToRender::AppList => {terminal.draw(|frame| mod_list_table.render(frame))?;}
@@ -77,16 +81,23 @@ fn main() -> io::Result<()>  {
                             KeyCode::Up => app_menu_options.select_previous(),
                             KeyCode::Down => app_menu_options.select_next(),
                             KeyCode::Enter => {
-                                match app_menu_options.get_selected_menu() {
+                                match app_menu_options.get_selected_menu().clone() {
                                     None => {}
                                     Some(selected_app_menu) => {
                                         match selected_app_menu {
                                             AppMenuOptionsList::Launch => {
                                                 launch_mod(mod_list_table.get_selected_app().unwrap())?;
                                             }
+                                            AppMenuOptionsList::Download => {
+                                                app_update_manager = AppUpdateManager {
+                                                    status: Default::default()
+                                                };
+                                                // app_update_manager.update_apps(vec![app_menu_options.app]);
+                                                // app_update_manager.add_app_to_update(app_menu_options.app.unwrap())
+                                            }
                                             AppMenuOptionsList::Patch => {} //
                                             AppMenuOptionsList::Update => {} //
-                                            AppMenuOptionsList::Description => {} // Maybe don't render/do anything and display this directly while in the app menu page.
+                                            AppMenuOptionsList::Description => {}, // Maybe don't render/do anything and display this directly while in the app menu page.
                                         }
                                     }
                                 }
