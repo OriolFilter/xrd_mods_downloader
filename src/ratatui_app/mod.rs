@@ -1,6 +1,7 @@
 mod functions;
 
 use std::collections::HashMap;
+use std::fmt;
 use std::io::BufRead;
 use std::option::Option;
 use color_eyre::owo_colors::colors::xterm::Purple;
@@ -20,6 +21,27 @@ use ratatui::widgets::{Block, Borders, Cell, HighlightSpacing, List, ListItem, L
 use crate::apps::AppStruct;
 use ratatui::style::palette::tailwind::{GREEN, SLATE, STONE};
 // use crate::ratatui_app::functions::render_footer;
+
+enum AppMenuOptionsList {
+    Launch,
+    Patch,
+    Update,
+    Description,
+
+    // HideOrShow
+}
+
+impl fmt::Display for AppMenuOptionsList {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.write_str(match self {
+            AppMenuOptionsList::Launch => {"Launch mod"}
+            AppMenuOptionsList::Patch => {"Patch mod"}
+            AppMenuOptionsList::Update => {"Search for updates"}
+            AppMenuOptionsList::Description => {"Mod's description"}
+        })?;
+        Ok(())
+    }
+}
 
 #[derive(Default)]
 pub(crate) enum MenuToRender {
@@ -246,13 +268,32 @@ impl AppMenuOptions {
         frame.render_widget(Line::raw("Use ↓ ↑ to navigate | Enter to Select/Deselect | s/S to invert sorting | Q/q to quit").centered(),area);
     }
 
+    fn get_menu_options_from_app(&self) -> Vec<AppMenuOptionsList>{
+        let mut menu_options = vec![];
+
+
+        if self.app.clone().unwrap().is_launchable(){
+            menu_options.push(AppMenuOptionsList::Launch)
+        }
+
+        menu_options.push(AppMenuOptionsList::Update);
+
+        if self.app.clone().unwrap().is_patcheable(){
+            menu_options.push(AppMenuOptionsList::Patch)
+        }
+
+        menu_options.push(AppMenuOptionsList::Description);
+
+        menu_options
+    }
     fn render_menu(&mut self, frame: &mut Frame, area: Rect)  {
         let app_name = self.app.clone().unwrap().get_app_name();
         let block = Block::new()
             .borders(Borders::ALL)
             .title(format!("Selected app {}",app_name));
 
-        let menu_options = vec!["Update mod", "Hide mod", "Launch mod"];
+        let mut menu_options = self.get_menu_options_from_app();
+
 
         let mut i=0;
         let mut styled_lines: Vec<ListItem> = vec![];
@@ -264,7 +305,7 @@ impl AppMenuOptions {
 
             // let line: Line = Line::styled(option);
 
-            styled_lines.push(ListItem::new(option).bg(color));
+            styled_lines.push(ListItem::new(option.to_string()).bg(color));
             // styled_line.push(ListItem::from(manager.config.apps.get(&app_name).unwrap()).bg(color));
         }
 
