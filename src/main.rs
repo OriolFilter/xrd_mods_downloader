@@ -54,7 +54,7 @@ async fn main() -> io::Result<()>  {
     while !exit {
         // if update_manager_spawn.is_some() {
         // } else {
-        match app_update_manager.status {
+        match app_update_manager.get_status() {
             AppUpdateManagerStatus::Running => {}
             AppUpdateManagerStatus::Finished => {}
             AppUpdateManagerStatus::Pending => {
@@ -119,7 +119,8 @@ async fn main() -> io::Result<()>  {
                                             AppMenuOptionsList::Download => {
                                                 app_update_manager = AppUpdateManager::new();
                                                 app_update_manager.add_app_to_update(app_menu_options.app.clone().unwrap());
-                                                app_update_manager.start_async_update()?;
+                                                let async_spawn = spawn(app_update_manager.update_apps());
+                                                // app_update_manager.start_async_update()?;
                                                 // let x= update_app_async(vec![app_menu_options.app.clone().unwrap()]);
                                                 // update_manager_spawn = Some(spawn(update_app_async(vec![app_menu_options.app.clone().unwrap()])));
                                             }
