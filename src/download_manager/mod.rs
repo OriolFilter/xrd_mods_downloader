@@ -1,3 +1,6 @@
+use std::io;
+use tokio::spawn;
+use tokio::task::JoinHandle;
 use crate::apps::AppStruct;
 
 #[derive(Default)]
@@ -36,6 +39,7 @@ impl ModUpdatingStatus {
 }
 
 #[derive(Default)]
+#[derive(Clone)]
 pub(crate) enum AppUpdateManagerStatus {
     #[default]
     Pending,
@@ -45,7 +49,18 @@ pub(crate) enum AppUpdateManagerStatus {
 
 pub(crate) struct AppUpdateManager {
     pub(crate) apps_to_update: Vec<ModUpdatingStatus>, // TODO make it a hashmap so there are no dupes (for whatever reason).
-    pub(crate) status: AppUpdateManagerStatus
+    pub(crate) status: AppUpdateManagerStatus,
+    async_spawn: Option<JoinHandle<()>>
+}
+
+impl AppUpdateManager {
+    pub(crate) fn new() -> Self {
+        Self {
+            apps_to_update: vec![],
+            status: Default::default(),
+            async_spawn: Default::default(),
+        }
+    }
 }
 
 impl AppUpdateManager {
@@ -58,7 +73,8 @@ impl AppUpdateManager {
     }
 
     // pub(crate) fn update_app(&mut self, app: &AppStruct) {
-    pub(crate) async fn update_app(&mut self, apps_to_update: Vec<AppStruct> ) {
+    async fn update_apps(&mut self) {
+    // async fn update_apps(&mut self, apps_to_update: Vec<AppStruct> ) {
         // Set running
         // Download if dont exists
 
@@ -68,15 +84,21 @@ impl AppUpdateManager {
 
         self.status = AppUpdateManagerStatus::Running;
         loop {
-            println!("Updating {:#?}", apps_to_update[0].get_app_name());
+            println!("Updating {:#?}", self.apps_to_update[0].app.get_app_name());
             std::thread::sleep_ms(1000);
         }
 
         // self.status = AppUpdateManagerStatus::Finished;
     }
-    // pub(crate) fn get_status(&self) -> AppUpdateManagerStatus {
-    //     self.status.to_owned()
-    // }
+
+    pub(crate) fn start_async_update(&mut self) -> io::Result<()>  {
+        let async_spawn = spawn(self.update_apps());
+        self.async_spawn = Some(async_spawn);
+        Ok(())
+    }
+    pub(crate) fn get_status(&mut self) -> AppUpdateManagerStatus {
+        self.status.to_owned()
+    }
 }
 
 pub(crate) async fn update_app_async(apps_to_update: Vec<AppStruct> ) {

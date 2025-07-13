@@ -48,15 +48,20 @@ async fn main() -> io::Result<()>  {
     };
 
     let mut app_menu_options = AppMenuOptions{ state: Default::default(), app: None, colors: TableColors::new() };
-    let mut update_manager_spawn: Option<JoinHandle<()>> = None;
+    // let mut update_manager_spawn: Option<JoinHandle<()>> = None;
     // let mut update_manager_spawn: Option<JoinHandle<()>>;
-    let mut app_update_manager = crate::download_manager::AppUpdateManager { apps_to_update: vec![], status: Default::default()};
+    let mut app_update_manager = crate::download_manager::AppUpdateManager::new();
     while !exit {
-        if update_manager_spawn.is_some() {
-        } else {
-            match menu_to_render {
-                MenuToRender::AppList => {terminal.draw(|frame| mod_list_table.render(frame))?;}
-                MenuToRender::AppMenuOptions => {terminal.draw(|frame| app_menu_options.render(frame))?;}
+        // if update_manager_spawn.is_some() {
+        // } else {
+        match app_update_manager.status {
+            AppUpdateManagerStatus::Running => {}
+            AppUpdateManagerStatus::Finished => {}
+            AppUpdateManagerStatus::Pending => {
+                match menu_to_render {
+                    MenuToRender::AppList => {terminal.draw(|frame| mod_list_table.render(frame))?;}
+                    MenuToRender::AppMenuOptions => {terminal.draw(|frame| app_menu_options.render(frame))?;}
+                }
             }
         }
         // // If something means it's updating
@@ -112,13 +117,11 @@ async fn main() -> io::Result<()>  {
                                             }
 
                                             AppMenuOptionsList::Download => {
-                                                app_update_manager = AppUpdateManager {
-                                                    apps_to_update: vec![],
-                                                    status: Default::default()
-                                                };
+                                                app_update_manager = AppUpdateManager::new();
                                                 app_update_manager.add_app_to_update(app_menu_options.app.clone().unwrap());
+                                                app_update_manager.start_async_update()?;
                                                 // let x= update_app_async(vec![app_menu_options.app.clone().unwrap()]);
-                                                update_manager_spawn = Some(spawn(update_app_async(vec![app_menu_options.app.clone().unwrap()])));
+                                                // update_manager_spawn = Some(spawn(update_app_async(vec![app_menu_options.app.clone().unwrap()])));
                                             }
 
                                             AppMenuOptionsList::Patch => {} //
