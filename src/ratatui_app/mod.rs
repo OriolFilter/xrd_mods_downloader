@@ -135,7 +135,7 @@ impl ModListTable {
         // let selected_col_style = Style::default(); //.fg(self.colors.selected_column_style_fg);
 
         // let header = ["Name"]
-        let header = ["Name", "Enabled"]
+        let header = ["Name", "Installed"]
             .into_iter()
             .map(Cell::from)
             .collect::<Row>()
@@ -148,7 +148,7 @@ impl ModListTable {
                 0 => self.colors.normal_row_color,
                 _ => self.colors.alt_row_color,
             };
-            let item = [app_name.to_string(), self.apps_hashmap.get(&app_name).unwrap().enabled.to_string()];
+            let item = [app_name.to_string(), self.apps_hashmap.get(&app_name).unwrap().is_installed().to_string()];
             item.into_iter().map(|content| Cell::from(Text::from(content))).collect::<Row>()
                 .style(Style::new().fg(self.colors.row_fg).bg(color)).height(1)
         });

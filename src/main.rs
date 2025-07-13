@@ -15,10 +15,11 @@ use ratatui_app::*;
 use apps::*;
 use ratatui::style::palette::tailwind::{SLATE};
 use ratatui::text::Line;
-// use download_manager::AppUpdateManager;
+use download_manager::AppUpdateManager;
 use ratatui_app::AppMenuOptionsList;
 use functions::{launch_mod};
-// use crate::download_manager::ModUpdatingStatus;
+use crate::download_manager::{AppUpdateManagerStatus, ModUpdatingStatus};
+use tokio::spawn;
 
 #[tokio::main]
 async fn main() -> io::Result<()>  {
@@ -45,12 +46,21 @@ async fn main() -> io::Result<()>  {
     };
 
     let mut app_menu_options = AppMenuOptions{ state: Default::default(), app: None, colors: TableColors::new() };
-    // let mut app_update_manager = AppUpdateManager{status: Default::default()};
+    let mut app_update_manager = AppUpdateManager{status: Default::default()};
     while !exit {
+
+        // let app_status = app_update_manager.get_status().to_owned();
+        // match app_update_manager.clone().get_status() {
+        //     AppUpdateManagerStatus::Running => {}
+        //     AppUpdateManagerStatus::Finished => {}
+        //     AppUpdateManagerStatus::Pending => {
         match menu_to_render {
             MenuToRender::AppList => {terminal.draw(|frame| mod_list_table.render(frame))?;}
             MenuToRender::AppMenuOptions => {terminal.draw(|frame| app_menu_options.render(frame))?;}
+                // }
+            // }
         }
+
 
         if let Event::Key(key) = event::read()? {
             match menu_to_render {
@@ -89,12 +99,10 @@ async fn main() -> io::Result<()>  {
                                                 launch_mod(mod_list_table.get_selected_app().unwrap())?;
                                             }
                                             AppMenuOptionsList::Download => {
-                                                // app_update_manager = AppUpdateManager {
-                                                //     status: Default::default()
-                                                // };
-                                                // app_update_manager.update_app(&app_menu_options.app.unwrap());
-                                                // app_update_manager.update_apps(vec![app_menu_options.app]);
-                                                // app_update_manager.add_app_to_update(app_menu_options.app.unwrap())
+                                                app_update_manager = AppUpdateManager {
+                                                    status: Default::default()
+                                                };
+                                                spawn(app_update_manager.update_app(vec![app_menu_options.app.clone().unwrap()]));
                                             }
                                             AppMenuOptionsList::Patch => {} //
                                             AppMenuOptionsList::Update => {} //
