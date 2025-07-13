@@ -7,6 +7,7 @@ use crossterm::event::{Event, KeyCode, KeyEventKind};
 use ratatui::widgets::TableState;
 use ratatui_app::*;
 use apps::*;
+use ratatui::style::palette::tailwind::{SLATE};
 
 fn main() -> io::Result<()>  {
     println!("hi");
@@ -26,18 +27,7 @@ fn main() -> io::Result<()>  {
         state: TableState::default().with_selected(0),
         // color_index: 0,
         app_list: default_apps,
-        // colors: TableColors{
-        //     buffer_bg: Default::default(),
-        //     header_bg: Default::default(),
-        //     header_fg: Default::default(),
-        //     row_fg: Default::default(),
-        //     selected_row_style_fg: Default::default(),
-        //     selected_column_style_fg: Default::default(),
-        //     selected_cell_style_fg: Default::default(),
-        //     normal_row_color: Default::default(),
-        //     alt_row_color: Default::default(),
-        //     footer_border_color: Default::default(),
-        // }
+        colors: TableColors::new()
     };
     loop {
         terminal.draw(|frame| mods_table.draw_mods_table(frame))?;
