@@ -1,8 +1,9 @@
+use std::io;
 use ratatui::Frame;
 use ratatui::layout::Rect;
 use ratatui::text::Line;
 use ratatui::widgets::{Paragraph, Widget};
-
+use crate::apps::AppStruct;
 // pub(crate) fn render_footer(frame: &mut Frame, area: Rect) {
 //     frame.render_widget(Line::raw("Use ↓ ↑ to navigate | Enter to Select/Deselect | s/S to invert sorting | Q/q to quit").centered(),area);
 //     // match app.selected_tab {
@@ -31,3 +32,15 @@ use ratatui::widgets::{Paragraph, Widget};
 //     //     }
 //     // }
 // }
+
+
+pub(crate) fn launch_mod(app:&AppStruct) -> io::Result<()>  {
+    println!("Executing {}",app.get_app_name());
+    println!("Executing {}",app.get_app_name());
+    println!("Executing {}",app.get_app_name());
+    println!("Executing {}",app.get_app_name());
+    println!("Executing {}",app.get_app_name());
+    println!("Executing {}",app.get_app_name());
+    std::thread::sleep_ms(100000);
+    Ok(())
+}

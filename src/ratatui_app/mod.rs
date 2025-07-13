@@ -1,28 +1,22 @@
-mod functions;
-
 use std::collections::HashMap;
 use std::fmt;
 use std::io::BufRead;
 use std::option::Option;
-use color_eyre::owo_colors::colors::xterm::Purple;
 use color_eyre::owo_colors::OwoColorize;
-use crossterm::event;
-use crossterm::event::{Event, KeyCode, KeyEventKind, KeyModifiers};
 use itertools::Itertools;
-use ratatui::{DefaultTerminal, Frame};
+use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::layout::Constraint::{Length, Min};
 use ratatui::prelude::Line;
 use ratatui::style::{Color, Modifier, Style, Stylize};
 use ratatui::style::palette::tailwind;
-use ratatui::style::palette::tailwind::Palette;
 use ratatui::text::Text;
-use ratatui::widgets::{Block, Borders, Cell, HighlightSpacing, List, ListItem, ListState, Paragraph, Row, Table, TableState, Widget};
+use ratatui::widgets::{Block, Borders, Cell, HighlightSpacing, List, ListItem, ListState, Row, Table, TableState};
 use crate::apps::AppStruct;
-use ratatui::style::palette::tailwind::{GREEN, SLATE, STONE};
 // use crate::ratatui_app::functions::render_footer;
 
-enum AppMenuOptionsList {
+#[derive(Clone)]
+pub(crate) enum AppMenuOptionsList {
     Launch,
     Patch,
     Update,
@@ -209,12 +203,21 @@ impl ModListTable {
             apps_name_list
         }
     }
-    pub(crate) fn get_selected_app(&mut self) -> Option<AppStruct> {
+    pub(crate) fn get_mut_selected_app(&mut self) -> Option<&mut AppStruct> {
+        match self.state.selected() {
+            Some(index) => {
+                let app_list = self.get_visible_app_list();
+                let app = self.apps_hashmap.get_mut(&app_list.get(index).unwrap().to_string());
+                app
+            }
+            _ => {Option::None}
+        }
+    }    pub(crate) fn get_selected_app(&self) -> Option<&AppStruct> {
         match self.state.selected() {
             Some(index) => {
                 let app_list = self.get_visible_app_list();
                 let app = self.apps_hashmap.get(&app_list.get(index).unwrap().to_string());
-                Some(app.unwrap().clone())
+                app
             }
             _ => {Option::None}
         }
@@ -315,6 +318,16 @@ impl AppMenuOptions {
             .block(block);
 
         frame.render_stateful_widget(list, area, &mut self.state);
+    }
+
+    pub(crate) fn get_selected_menu(&mut self) -> Option<AppMenuOptionsList> {
+        match self.state.selected() {
+            Some(index) => {
+                let menu_options = self.get_menu_options_from_app();
+                Some(menu_options.get(index).unwrap().clone())
+            }
+            _ => {Option::None}
+        }
     }
 }
 

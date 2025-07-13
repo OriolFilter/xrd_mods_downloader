@@ -1,5 +1,6 @@
 mod ratatui_app;
 mod apps;
+mod functions;
 
 use std::io;
 use color_eyre::owo_colors::OwoColorize;
@@ -13,6 +14,8 @@ use ratatui_app::*;
 use apps::*;
 use ratatui::style::palette::tailwind::{SLATE};
 use ratatui::text::Line;
+use ratatui_app::AppMenuOptionsList;
+use functions::{launch_mod};
 
 fn main() -> io::Result<()>  {
     println!("hi");
@@ -25,7 +28,7 @@ fn main() -> io::Result<()>  {
     // Either leave or create a new one.
 
     // If it does continue
-    let mut current_menu = MenuToRender::AppList;
+    let mut menu_to_render = MenuToRender::AppList;
 
     color_eyre::install();
     let mut terminal = ratatui::init();
@@ -40,13 +43,13 @@ fn main() -> io::Result<()>  {
     let mut app_menu_options = AppMenuOptions{ state: Default::default(), app: None, colors: TableColors::new() };
 
     while !exit {
-        match current_menu {
+        match menu_to_render {
             MenuToRender::AppList => {terminal.draw(|frame| mod_list_table.render(frame))?;}
             MenuToRender::AppMenuOptions => {terminal.draw(|frame| app_menu_options.render(frame))?;}
         }
 
         if let Event::Key(key) = event::read()? {
-            match current_menu {
+            match menu_to_render {
                 MenuToRender::AppList => {
                     if key.kind == KeyEventKind::Press {
                         match key.code {
@@ -56,10 +59,10 @@ fn main() -> io::Result<()>  {
                             KeyCode::Enter => {
                                 app_menu_options = AppMenuOptions {
                                     state: Default::default(),
-                                    app: mod_list_table.get_selected_app(),
+                                    app: mod_list_table.get_selected_app().cloned(),
                                     colors: TableColors::new(),
                                 };
-                                current_menu=MenuToRender::AppMenuOptions;
+                                menu_to_render =MenuToRender::AppMenuOptions;
                             },
                             KeyCode::Char('r') | KeyCode::Char('R') => mod_list_table.sort_ascend=!mod_list_table.sort_ascend,
                             _ => {}
@@ -70,18 +73,29 @@ fn main() -> io::Result<()>  {
                 MenuToRender::AppMenuOptions => {
                     if key.kind == KeyEventKind::Press {
                         match key.code {
-                            KeyCode::Char('q') | KeyCode::Esc => current_menu=MenuToRender::AppList,
+                            KeyCode::Char('q') | KeyCode::Esc => menu_to_render =MenuToRender::AppList,
                             KeyCode::Up => app_menu_options.select_previous(),
                             KeyCode::Down => app_menu_options.select_next(),
                             KeyCode::Enter => {
-                                // current_menu=MenuToRender::AppMenuOptions;
+                                match app_menu_options.get_selected_menu() {
+                                    None => {}
+                                    Some(selected_app_menu) => {
+                                        match selected_app_menu {
+                                            AppMenuOptionsList::Launch => {
+                                                launch_mod(mod_list_table.get_selected_app().unwrap())?;
+                                            }
+                                            AppMenuOptionsList::Patch => {} //
+                                            AppMenuOptionsList::Update => {} //
+                                            AppMenuOptionsList::Description => {} // Maybe don't render/do anything and display this directly while in the app menu page.
+                                        }
+                                    }
+                                }
                             },
                             _ => {}
                         }
                     }
                 }
             }
-
         }
     };
 
