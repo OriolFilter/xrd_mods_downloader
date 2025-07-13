@@ -7,6 +7,7 @@ use color_eyre::owo_colors::colors::xterm::Purple;
 use color_eyre::owo_colors::OwoColorize;
 use crossterm::event;
 use crossterm::event::{Event, KeyCode, KeyEventKind, KeyModifiers};
+use itertools::Itertools;
 use ratatui::{DefaultTerminal, Frame};
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::layout::Constraint::{Length, Min};
@@ -15,10 +16,17 @@ use ratatui::style::{Color, Modifier, Style, Stylize};
 use ratatui::style::palette::tailwind;
 use ratatui::style::palette::tailwind::Palette;
 use ratatui::text::Text;
-use ratatui::widgets::{Block, Borders, Cell, HighlightSpacing, ListState, Paragraph, Row, Table, TableState, Widget};
+use ratatui::widgets::{Block, Borders, Cell, HighlightSpacing, List, ListItem, ListState, Paragraph, Row, Table, TableState, Widget};
 use crate::apps::AppStruct;
 use ratatui::style::palette::tailwind::{GREEN, SLATE, STONE};
-use crate::ratatui_app::functions::render_footer;
+// use crate::ratatui_app::functions::render_footer;
+
+#[derive(Default)]
+pub(crate) enum MenuToRender {
+    #[default]
+    AppList,
+    AppMenuOptions // Shows the option menu for that app
+}
 
 const PALETTES: [tailwind::Palette; 4] = [
     tailwind::BLUE,
@@ -27,12 +35,12 @@ const PALETTES: [tailwind::Palette; 4] = [
     tailwind::RED,
 ];
 
-pub(crate) struct ModsTable {
+pub(crate) struct ModListTable {
     // mod_list
     pub(crate) sort_ascend: bool,
     pub(crate) state: TableState,
     // color_index: i32,
-    pub(crate) app_list: HashMap<String,AppStruct>,
+    pub(crate) apps_hashmap: HashMap<String,AppStruct>,
     pub(crate) colors: TableColors
 }
 
@@ -65,7 +73,7 @@ impl TableColors {
     }
 }
 
-impl ModsTable {
+impl ModListTable {
     pub(crate) fn select_next(&mut self) {
         self.state.select_next();
     }
@@ -82,7 +90,7 @@ impl ModsTable {
     }
 
 
-    pub(crate) fn draw_mods_table(&mut self, frame: &mut Frame) {
+    pub(crate) fn render(&mut self, frame: &mut Frame) {
         // let vertical = &Layout::vertical([Constraint::Min(5), Constraint::Length(4)]);
         let vertical = &Layout::vertical([Min(0), Length(1)]);
         // let vertical = &Layout::vertical([Length(1), Min(0), Length(1)]);
@@ -92,10 +100,12 @@ impl ModsTable {
         // self.render_controls(frame, rects[1]);
 
 
-        render_footer(frame,rects[1]);
+        self.render_footer(frame,rects[1]);
     }
 
     fn render_table(&mut self, frame: &mut Frame, area: Rect)  {
+
+        let app_list = self.get_visible_app_list();
         let block = Block::new()
             .borders(Borders::ALL)
             .title("Apps");
@@ -114,12 +124,13 @@ impl ModsTable {
             .style(header_style)
             .height(1);
 
-        let rows = self.app_list.values().into_iter().enumerate().map(|(i, app)| {
+        // let rows = self.apps_hashmap.values().into_iter().enumerate().map(|(i, app)| {
+        let rows = app_list.into_iter().enumerate().map(|(i, app_name)| {
             let color = match i % 2 {
                 0 => self.colors.normal_row_color,
                 _ => self.colors.alt_row_color,
             };
-            let item = [app.get_app_name().to_string(),app.enabled.to_string()];
+            let item = [app_name.to_string(), self.apps_hashmap.get(&app_name).unwrap().enabled.to_string()];
             item.into_iter().map(|content| Cell::from(Text::from(content))).collect::<Row>()
                 .style(Style::new().fg(self.colors.row_fg).bg(color)).height(1)
         });
@@ -127,7 +138,7 @@ impl ModsTable {
         let mut app_name_max_col_length:u16 = 0;
         let mut enabled_max_col_length:u16 = 4;
 
-        for app in self.app_list.values() {
+        for app in self.apps_hashmap.values() {
             if app_name_max_col_length < app.get_app_name().len() as u16 {
                 app_name_max_col_length = app.get_app_name().len() as u16;
             }
@@ -157,4 +168,112 @@ impl ModsTable {
         // frame.render_stateful_widget(t, area, &mut self.state);
     }
 
+    fn render_footer(&self, frame: &mut Frame, area: Rect) {
+        frame.render_widget(Line::raw("Use ↓ ↑ to navigate | Enter to Select/Deselect | r/R to revert sorting | Q/q to quit").centered(),area);
+    }
+
+    pub(crate) fn get_visible_app_list(&self) -> Vec<String> {
+        let mut apps_name_list: Vec<String> = vec![];
+        for app in self.apps_hashmap.values() {
+            if !app.hidden {
+                apps_name_list.push(app.get_app_name());
+            }
+        }
+        apps_name_list.sort();
+        if self.sort_ascend {
+            apps_name_list
+        } else {
+            apps_name_list.reverse();
+            apps_name_list
+        }
+    }
+    pub(crate) fn get_selected_app(&mut self) -> Option<AppStruct> {
+        match self.state.selected() {
+            Some(index) => {
+                let app_list = self.get_visible_app_list();
+                let app = self.apps_hashmap.get(&app_list.get(index).unwrap().to_string());
+                Some(app.unwrap().clone())
+            }
+            _ => {Option::None}
+        }
+    }
+        // pub (crate) fn get_app_names(&self) -> Vec<String> {
+        //     // self.config.apps.keys().sorted().collect()
+        //     let mut apps_name_list: Vec<String> = self.config.apps.iter().map(|(app_name,app)| {app.get_app_name()}).collect();
+        //     apps_name_list.sort();
+        //     apps_name_list
+        // }
 }
+
+
+pub(crate) struct AppMenuOptions {
+    pub(crate) state: ListState,
+    pub(crate) app: Option<AppStruct>,
+    pub(crate) colors: TableColors
+}
+
+impl AppMenuOptions {
+    pub(crate) fn select_next(&mut self) {
+        self.state.select_next();
+    }
+    pub(crate) fn select_previous(&mut self) {
+        self.state.select_previous();
+    }
+
+    pub(crate) fn select_first(&mut self) {
+        self.state.select_first();
+    }
+
+    pub(crate) fn select_last(&mut self) {
+        self.state.select_last();
+    }
+    pub(crate) fn render(&mut self, frame: &mut Frame) {
+        let vertical = &Layout::vertical([Constraint::Min(5), Constraint::Length(4)]);
+        let vertical = &Layout::vertical([Min(0), Length(1)]);
+        // let vertical = &Layout::vertical([Length(1), Min(0), Length(1)]);
+        let rects = vertical.split(frame.area());
+        // self.render_table);
+        // Line::raw("Use ↓ ↑ to navigate | Enter to Select/Deselect | Q/q to quit").centered().render(rects[1]);
+        // self.render_controls(frame, rects[1]);
+        // self.app.unwrap().get_app_name();
+        // let _ = self.app.unwrap();
+
+        self.render_menu(frame, rects[0]);
+        self.render_footer(frame, rects[1]);
+    }
+
+    fn render_footer(&self, frame: &mut Frame, area: Rect) {
+        frame.render_widget(Line::raw("Use ↓ ↑ to navigate | Enter to Select/Deselect | s/S to invert sorting | Q/q to quit").centered(),area);
+    }
+
+    fn render_menu(&mut self, frame: &mut Frame, area: Rect)  {
+        let app_name = self.app.clone().unwrap().get_app_name();
+        let block = Block::new()
+            .borders(Borders::ALL)
+            .title(format!("Selected app {}",app_name));
+
+        let menu_options = vec!["Update mod", "Hide mod", "Launch mod"];
+
+        let mut i=0;
+        let mut styled_lines: Vec<ListItem> = vec![];
+        for option in menu_options {
+            let color = match i % 2 {
+                0 => self.colors.normal_row_color,
+                _ => self.colors.alt_row_color,
+            };
+
+            // let line: Line = Line::styled(option);
+
+            styled_lines.push(ListItem::new(option).bg(color));
+            // styled_line.push(ListItem::from(manager.config.apps.get(&app_name).unwrap()).bg(color));
+        }
+
+        let list = List::new(styled_lines)
+            .highlight_symbol(">")
+            .highlight_spacing(HighlightSpacing::Always)
+            .block(block);
+
+        frame.render_stateful_widget(list, area, &mut self.state);
+    }
+}
+

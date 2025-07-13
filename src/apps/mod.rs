@@ -36,6 +36,8 @@ pub struct AppStruct {
     pub(crate) patched: bool,
     #[serde(default = "set_false")]
     pub(crate) enabled: bool, // Whether if you want to keep it track/visible in other windows or not
+    #[serde(default = "set_false")]
+    pub(crate) hidden: bool, // Whether if you want to keep it track/visible in other windows or not
     #[serde(default = "set_false")] // TODO Unused
     pub(crate) track_updates: bool,
     #[serde(default = "set_false")] // TODO Unused
@@ -65,6 +67,7 @@ impl AppStruct {
             automatically_patch: false,
             patched: false,
             enabled: false,
+            hidden: false,
             track_updates: false,
             tracked: false,
         }
