@@ -73,7 +73,7 @@ impl AppUpdateManager {
     }
 
     // pub(crate) fn update_app(&mut self, app: &AppStruct) {
-    pub(crate) async fn update_apps(&mut self) {
+    pub(crate) fn update_apps(&mut self) {
     // async fn update_apps(&mut self, apps_to_update: Vec<AppStruct> ) {
         // Set running
         // Download if dont exists
@@ -86,7 +86,22 @@ impl AppUpdateManager {
             println!("Updating {:#?}", self.apps_to_update[0].app.get_app_name());
             std::thread::sleep_ms(1000);
         }
+        // self.status = AppUpdateManagerStatus::Finished;
+    }
 
+    pub(crate) async fn update_apps_async(&mut self) {
+        // async fn update_apps(&mut self, apps_to_update: Vec<AppStruct> ) {
+        // Set running
+        // Download if dont exists
+
+        // Update if already exists
+        // The pipeline should feel the same.
+        // Downloading is like updating from Null to 'XYZ'
+        self.status = AppUpdateManagerStatus::Running;
+        loop {
+            println!("Updating {:#?}", self.apps_to_update[0].app.get_app_name());
+            std::thread::sleep_ms(1000);
+        }
         // self.status = AppUpdateManagerStatus::Finished;
     }
 
