@@ -120,7 +120,12 @@ async fn main() -> io::Result<()>  {
                                                 app_update_manager = AppUpdateManager::new();
                                                 app_update_manager.add_app_to_update(app_menu_options.app.clone().unwrap());
                                                 app_update_manager.update_apps(); // sync
-                                                // app_update_manager.async_spawn= Option::from(spawn(app_update_manager.update_apps()));
+                                                // app_update_manager.async_spawn = Option::from(spawn(app_update_manager.update_apps_async()));
+                                                // if app_update_manager.async_spawn.is_none().to_owned() {
+                                                //     println!("ASYNC IS EMPTY");
+                                                // } else {
+                                                //     println!("ASYNC IS SOMETHING");
+                                                // }
                                                 // update_manager_spawn = Some(spawn(app_update_manager.update_apps()));
                                                 // app_update_manager.start_async_update()?;
                                                 // let x= update_app_async(vec![app_menu_options.app.clone().unwrap()]);
